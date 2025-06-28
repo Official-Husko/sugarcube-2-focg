@@ -1,0 +1,78 @@
+name: Build and Release SugarCube FoC:G
+
+on:
+  push:
+    tags:
+      - '*.*.*-pre*'
+      - '*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16.x'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build SugarCube
+        run: node build.js
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: build/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts (Linux)
+        uses: actions/download-artifact@v4
+        with:
+          name: build-ubuntu-latest
+          path: build-linux
+
+      - name: Download build artifacts (Windows)
+        uses: actions/download-artifact@v4
+        with:
+          name: build-windows-latest
+          path: build-windows
+
+      - name: Create release zip (Linux)
+        run: |
+          cd build-linux
+          zip -r ../sugarcube-focg-linux.zip .
+        shell: bash
+
+      - name: Create release zip (Windows)
+        run: |
+          cd build-windows
+          zip -r ../sugarcube-focg-windows.zip .
+        shell: bash
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ contains(github.ref, '-pre') }}
+          files: |
+            sugarcube-focg-linux.zip
+            sugarcube-focg-windows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
