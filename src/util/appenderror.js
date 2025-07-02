@@ -11,7 +11,7 @@
 /*
 	Appends an error view to the given DOM element or fragment and logs a message to the console.
 */
-function appendError(output, message, source) { // eslint-disable-line no-unused-vars
+function appendError(output, message, source, stack) { // eslint-disable-line no-unused-vars
 	const $wrapper = jQuery(document.createElement('div'));
 	const $toggle  = jQuery(document.createElement('button'));
 	const $source  = jQuery(document.createElement('pre'));
@@ -49,6 +49,24 @@ function appendError(output, message, source) { // eslint-disable-line no-unused
 			hidden        : 'hidden'
 		})
 		.appendTo($wrapper);
+
+
+		/*
+
+		This is taken from the original SugarCube v2 fork used by darkofoc.
+		This should hopefully do the same thing as the original patch.
+
+		*/
+
+	if (stack) {
+		const lines = stack.split('\n');
+		for (const ll of lines) {
+			const div = document.createElement('div');
+			div.append(ll.replace(/file:.*\//, '<path>/'));
+			$source.append(div);
+		}
+	}
+
 	$wrapper
 		.addClass('error-view')
 		.appendTo(output);
