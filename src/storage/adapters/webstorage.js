@@ -182,13 +182,13 @@ SimpleStore.adapters.push((() => {
 
 
 		static #serialize(obj) {
-			//return LZString.compressToUTF16(Serial.stringify(obj));
-			return JSON.stringify(obj)
+			return LZString.compressToUTF16(Serial.stringify(obj));
+			//return JSON.stringify(obj)
 		}
 
 		static #deserialize(str) {
-			//return Serial.parse(LZString.decompressFromUTF16(str));
-			return JSON.parse((!str || str[0] == "{") ? str : LZString.decompressFromUTF16(str));
+			return Serial.parse(LZString.decompressFromUTF16(str));
+			//return JSON.parse((!str || str[0] == "{") ? str : LZString.decompressFromUTF16(str));
 		}
 	}
 
