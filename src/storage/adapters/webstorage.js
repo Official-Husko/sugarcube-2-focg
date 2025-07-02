@@ -173,12 +173,22 @@ SimpleStore.adapters.push((() => {
 
 		// Static private methods.
 
+		/**
+
+		This code has been patched like the original sugarcube v2 fork darkofoc used.
+		https://gitgud.io/darkofocdarko/sugarcube-2/-/blob/54ea743041a6909132eb8ea554486bdc27656580/src/lib/simplestore/adapters/webstorage.js
+
+		 */
+
+
 		static #serialize(obj) {
-			return LZString.compressToUTF16(Serial.stringify(obj));
+			//return LZString.compressToUTF16(Serial.stringify(obj));
+			return JSON.stringify(obj)
 		}
 
 		static #deserialize(str) {
-			return Serial.parse(LZString.decompressFromUTF16(str));
+			//return Serial.parse(LZString.decompressFromUTF16(str));
+			return JSON.parse((!str || str[0] == "{") ? str : LZString.decompressFromUTF16(str));
 		}
 	}
 
