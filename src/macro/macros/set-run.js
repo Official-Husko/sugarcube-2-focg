@@ -22,8 +22,21 @@ Macro.add('set', {
 		try {
 			Scripting.evalJavaScript(this.args.full);
 		}
+
+		/*
+
+		This patch is taken from the original SugarCube v2 fork used by darkofoc.
+		Hopefully, this does the same thing as the original patch.
+		https://gitgud.io/darkofocdarko/sugarcube-2/-/blob/cc11dbf238824b413c60ca407eccde33aa04605d/src/macros/macrolib.js
+
+		*/
+
 		catch (ex) {
-			return this.error(`bad evaluation: ${getErrorMessage(ex)}`);
+			return this.error(
+				`bad evaluation: ${typeof ex === 'object' ? `${ex.name}: ${ex.message}` : ex}`,
+				null,
+				ex.stack
+			);
 		}
 
 		// Custom debug view setup.

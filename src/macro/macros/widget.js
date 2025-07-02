@@ -87,8 +87,21 @@ Macro.add('widget', {
 								return this.error(`error${errList.length > 1 ? 's' : ''} within widget code (${errList.join('; ')})`);
 							}
 						}
+
+						/*
+
+						This patch is taken from the original SugarCube v2 fork used by darkofoc.
+						Hopefully, this does the same thing as the original patch.
+						https://gitgud.io/darkofocdarko/sugarcube-2/-/blob/cc11dbf238824b413c60ca407eccde33aa04605d/src/macros/macrolib.js
+
+						*/
+
 						catch (ex) {
-							return this.error(`cannot execute widget: ${ex.message}`);
+							return this.error(
+								`cannot execute widget: ${typeof ex === 'object' ? `${ex.name}: ${ex.message}` : ex}`,
+								null,
+								ex.stack
+							);
 						}
 						finally {
 							// Revert the `_args` variable shadowing.
