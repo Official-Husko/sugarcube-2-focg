@@ -285,8 +285,23 @@ class MacroContext { // eslint-disable-line no-unused-vars
 		this.#debugViewEnabled = false;
 	}
 
-	error(message, source) {
-		return appendError(this.#output, `<<${this.displayName}>>: ${message}`, source ? source : this.source);
+	/*
+
+	This patch is taken from the original SugarCube v2 fork used by darkofoc.
+	It was rewritten to be more compatible with the current version of SugarCube and its codebase.
+	https://gitgud.io/darkofocdarko/sugarcube-2/-/blob/cc11dbf238824b413c60ca407eccde33aa04605d/src/macros/macrocontext.js
+
+	*/
+
+	error(message, source, stack) {
+		// Compatibility: prefer displayName, fallback to name if not present
+		const macroName = this.name || this.displayName;
+		return appendError(
+			this.#output,
+			`<<${macroName}>>: ${message}`,
+			source ? source : this.source,
+			stack // stack is optional
+		);
 	}
 
 	wiki(...sources) {
