@@ -38,7 +38,7 @@ You can either:
 
 ## 🛠️ Building from Source
 
-SugarCube uses **Node.js** (≥v16) for its build system.
+SugarCube uses **Node.js** (≥v18.3, v22 recommended) for its build system.
 You'll also need **Git** to fetch the source code.
 
 ### 1️⃣ Install Prerequisites
@@ -49,8 +49,8 @@ You'll also need **Git** to fetch the source code.
 ### 2️⃣ Clone the Repository
 
 ```sh
-git clone https://github.com/Official-Husko/fork-of-chains.git
-cd fork-of-chains
+git clone https://github.com/Official-Husko/sugarcube-2-focg.git
+cd sugarcube-2-focg
 ```
 
 ### 3️⃣ Choose a Branch
@@ -73,10 +73,14 @@ npm install
 ### 5️⃣ Build SugarCube
 
 ```sh
-node build.js
+npm run build
 ```
 
 The compiled story formats (Twine 1 & 2) will be output to the `build` directory. 🎉
+
+Other scripts: `npm run build:small` (embeds only the icon glyphs the UI uses; see [MODERNIZATION.md](MODERNIZATION.md)),
+`npm run lint`, `npm run smoke` (headless-browser smoke test; needs `npx playwright install chromium`) and `npm test`
+(lint + build + smoke).
 
 ---
 
@@ -100,6 +104,8 @@ The compiled story formats (Twine 1 & 2) will be output to the `build` directory
 > ```sh
 > node build.js -h
 > ```
+>
+> Build targets, size measurements, the test strategy and open findings are documented in [MODERNIZATION.md](MODERNIZATION.md).
 
 ---
 
