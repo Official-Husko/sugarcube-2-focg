@@ -336,7 +336,7 @@ function compileJavaScript(config, options) {
 					BUILD_DEBUG  : _opts.debug || false
 				}
 			},
-			mangle : false
+			mangle : true
 		});
 
 		if (minified.error) {

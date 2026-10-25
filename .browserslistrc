@@ -2,4 +2,11 @@
 # plugins—e.g., `@babel/preset-env`—will not properly process the aggregate
 # query.
 
-> 1% or last 3 versions or last 10 Chrome versions or last 10 Firefox versions
+# Evergreen browsers only (all released in or before 2022).  If you must support
+# older engines (e.g., an ancient embedded WebView), lower the versions here and
+# rebuild; Babel and Autoprefixer both read this file.
+chrome >= 100
+edge >= 100
+firefox >= 102
+safari >= 15.4
+ios_saf >= 15.4
