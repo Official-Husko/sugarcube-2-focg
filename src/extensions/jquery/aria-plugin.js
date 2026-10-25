@@ -221,26 +221,27 @@
 			}
 
 			/*
-				NOTE: We use `<jQuery>.each()` callbacks to invoke the `<Element>.setAttribute()`
-				methods in the following because the `<jQuery>.attr()` method does not allow you
-				to set a content attribute without a value, which is recommended for boolean
-				content attributes by the HTML specification.
+				NOTE: We use the `<jQuery>.each()` method here because we need to invoke the
+				`disableTabindex()` or `restoreTabindex()` function on each individual element.
 			*/
 
-			const $nonDisableable = this.not('button,fieldset,input,menuitem,optgroup,option,select,textarea');
-			const $disableable    = this.filter('button,fieldset,input,menuitem,optgroup,option,select,textarea');
+			const disabledSet     = 'button,fieldset,input,optgroup,option,select,textarea';
+			const $nonDisableable = this.not(disabledSet);
+			const $disableable    = this.filter(disabledSet);
 
 			if (disable) {
-				// Set boolean content attribute `disabled` to `'disabled'` and set non-boolean
-				// content attribute `aria-disabled` to `'true'`, for non-disableable elements.
+				// For non-disableable elements: set the boolean content attribute `disabled` to
+				// `'disabled'`, set the non-boolean content attribute `aria-disabled` to `'true'`,
+				// and set the content attribute `tabindex` to the appropriate value.
 				$nonDisableable.each(function () {
 					this.setAttribute('disabled', 'disabled');
 					this.setAttribute('aria-disabled', 'true');
 					disableTabindex(this);
 				});
 
-				// Set IDL attribute `disabled` to `true` and set non-boolean content attribute
-				// `aria-disabled` to `'true'`, for disableable elements.
+				// For disableable elements: set the IDL attribute `disabled` to `true`, set the
+				// non-boolean content attribute `aria-disabled` to `'true'`, and set the content
+				// attribute `tabindex` to the appropriate value.
 				$disableable.each(function () {
 					this.disabled = true;
 					this.setAttribute('aria-disabled', 'true');
@@ -248,15 +249,18 @@
 				});
 			}
 			else {
-				// Remove content attributes `disabled` and `aria-disabled`, for non-disableable elements.
+				// For non-disableable elements: remove the content attribute `disabled`, remove
+				// the content attribute `aria-disabled`, and restore the content attribute
+				// `tabindex` to its original value.
 				$nonDisableable.each(function () {
 					this.removeAttribute('disabled');
 					this.removeAttribute('aria-disabled');
 					restoreTabindex(this);
 				});
 
-				// Set IDL attribute `disabled` to `false` and remove content attribute `aria-disabled`,
-				// for disableable elements.
+				// For disableable elements: set the IDL attribute `disabled` to `false`, remove
+				// the content attribute `aria-disabled`, and restore the content attribute
+				// `tabindex` to its original value.
 				$disableable.each(function () {
 					this.disabled = false;
 					this.removeAttribute('aria-disabled');

@@ -12,7 +12,8 @@
 	<<checkbox>>
 */
 Macro.add('checkbox', {
-	isAsync : true,
+	isAsync   : true,
+	receivers : [0], // NOTE: Only notional for now.
 
 	handler() {
 		if (this.args.length < 3) {
@@ -35,52 +36,106 @@ Macro.add('checkbox', {
 			return this.error(`variable name "${this.args[0]}" is missing its sigil ($ or _)`);
 		}
 
-		const varId        = createSlug(varName);
 		const uncheckValue = this.args[1];
 		const checkValue   = this.args[2];
-		const el           = document.createElement('input');
+		const optArgs      = Object.assign(Object.create(null), {
+			autocheck : false,
+			checked   : false,
+			classes   : [`macro-${this.name}`],
+			disabled  : false
+		});
 
-		/*
-			Set up and append the input element to the output buffer.
-		*/
-		jQuery(el)
+		// Process optional arguments.
+		for (let i = 3; i < this.args.length; ++i) {
+			switch (this.args[i]) {
+				case 'autocheck': {
+					optArgs.autocheck = true;
+					break;
+				}
+
+				case 'checked': {
+					optArgs.checked = true;
+					break;
+				}
+
+				case 'class': {
+					if (++i >= this.args.length) {
+						return this.error('class option missing required value');
+					}
+
+					optArgs.classes.push(this.args[i]);
+					break;
+				}
+
+				case 'disabled': {
+					optArgs.disabled = true;
+					break;
+				}
+
+				case 'id': {
+					if (++i >= this.args.length) {
+						return this.error('id option missing required value');
+					}
+
+					if (typeof this.args[i] !== 'string') {
+						return this.error('id option value must be a string');
+					}
+
+					optArgs.id = this.args[i].trim();
+
+					if (optArgs.id === '') {
+						return this.error('id option value cannot be an empty string');
+					}
+
+					break;
+				}
+
+				default: {
+					return this.error(`unknown option: ${this.args[i]}`);
+				}
+			}
+		}
+
+		if (optArgs.autocheck && optArgs.checked) {
+			return this.error('cannot specify both the autocheck and checked keywords');
+		}
+
+		const varId = createSlug(varName);
+		const el    = document.createElement('input');
+
+		// Set up and append the input element to the output buffer.
+		const $checkbox = jQuery(el)
 			.attr({
-				id       : `${this.name}-${varId}`,
+				id       : optArgs?.id ? optArgs.id : `${this.name}-${varId}`,
 				name     : `${this.name}-${varId}`,
 				type     : 'checkbox',
 				tabindex : 0 // for accessibility
 			})
-			.addClass(`macro-${this.name}`)
+			.addClass(optArgs.classes)
 			.on('change.macros', this.shadowHandler(function () {
 				State.setVar(varName, this.checked ? checkValue : uncheckValue);
 			}))
 			.appendTo(this.output);
 
-		/*
-			Set the variable and input element to the appropriate value and state, as requested.
-		*/
-		switch (this.args[3]) {
-			case 'autocheck': {
-				if (State.getVar(varName) === checkValue) {
-					el.checked = true;
-				}
-				else {
-					State.setVar(varName, uncheckValue);
-				}
+		if (optArgs.disabled) {
+			$checkbox.ariaDisabled(true);
+		}
 
-				break;
-			}
-
-			case 'checked': {
+		// Set the variable and input element to the appropriate value and state, as requested.
+		if (optArgs.autocheck) {
+			if (State.getVar(varName) === checkValue) {
 				el.checked = true;
-				State.setVar(varName, checkValue);
-				break;
 			}
-
-			default: {
+			else {
 				State.setVar(varName, uncheckValue);
-				break;
 			}
+		}
+		else if (optArgs.checked) {
+			el.checked = true;
+			State.setVar(varName, checkValue);
+		}
+		else {
+			State.setVar(varName, uncheckValue);
 		}
 	}
 });

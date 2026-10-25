@@ -12,9 +12,10 @@
 	<<cycle>>, <<listbox>>, <<option>>, & <<optionsfrom>>
 */
 Macro.add(['cycle', 'listbox'], {
-	isAsync  : true,
-	skipArgs : ['optionsfrom'],
-	tags     : ['option', 'optionsfrom'],
+	isAsync   : true,
+	receivers : [0], // NOTE: Only notional for now.
+	skipArgs  : ['optionsfrom'],
+	tags      : ['option', 'optionsfrom'],
 
 	handler() {
 		if (this.args.length === 0) {
@@ -33,26 +34,67 @@ Macro.add(['cycle', 'listbox'], {
 			return this.error(`variable name "${this.args[0]}" is missing its sigil ($ or _)`);
 		}
 
-		const varId = createSlug(varName);
-		const len   = this.payload.length;
+		const len = this.payload.length;
 
 		if (len === 1) {
 			return this.error('no options specified');
 		}
 
-		const config = {
+		const optArgs = Object.assign(Object.create(null), {
 			autoselect : false,
+			classes    : [`macro-${this.name}`],
+			disabled   : false,
 			once       : false
-		};
+		});
 
-		// Process arguments.
+		// Process optional arguments.
 		for (let i = 1; i < this.args.length; ++i) {
-			const arg = this.args[i];
+			switch (this.args[i]) {
+				case 'autoselect': {
+					optArgs.autoselect = true;
+					break;
+				}
 
-			switch (arg) {
-				case 'once':       config.once = true; break;
-				case 'autoselect': config.autoselect = true; break;
-				default:           return this.error(`unknown argument: ${arg}`);
+				case 'class': {
+					if (++i >= this.args.length) {
+						return this.error('class option missing required value');
+					}
+
+					optArgs.classes.push(this.args[i]);
+					break;
+				}
+
+				case 'disabled': {
+					optArgs.disabled = true;
+					break;
+				}
+
+				case 'id': {
+					if (++i >= this.args.length) {
+						return this.error('id option missing required value');
+					}
+
+					if (typeof this.args[i] !== 'string') {
+						return this.error('id option value must be a string');
+					}
+
+					optArgs.id = this.args[i].trim();
+
+					if (optArgs.id === '') {
+						return this.error('id option value cannot be an empty string');
+					}
+
+					break;
+				}
+
+				case 'once': {
+					optArgs.once = true;
+					break;
+				}
+
+				default: {
+					return this.error(`unknown option: ${this.args[i]}`);
+				}
 			}
 		}
 
@@ -107,7 +149,7 @@ Macro.add(['cycle', 'listbox'], {
 				options.push(option);
 
 				if (isSelected) {
-					if (config.autoselect) {
+					if (optArgs.autoselect) {
 						return this.error('cannot specify both the autoselect and selected keywords');
 					}
 					else if (index !== -1) {
@@ -129,13 +171,11 @@ Macro.add(['cycle', 'listbox'], {
 				let result;
 
 				try {
-					/*
-						NOTE: If the first character is the left curly brace, then we
-						assume that it's part of an object literal and wrap it within
-						parenthesis to ensure that it is not mistaken for a block
-						during evaluation—which would cause an error.
-					*/
-					const exp = payload.args.full;
+					// NOTE: If the first character is the left curly brace, then we
+					// assume that it's part of an object literal and wrap it within
+					// parenthesis to ensure that it is not mistaken for a block
+					// during evaluation—which would cause an error.
+					const exp = payload.args.full.trim();
 					result = Scripting.evalJavaScript(exp[0] === '{' ? `(${exp})` : exp);
 				}
 				catch (ex) {
@@ -167,7 +207,7 @@ Macro.add(['cycle', 'listbox'], {
 		// No options were selected by the user, so we must select one.
 		if (index === -1) {
 			// Attempt to automatically select an option by matching the variable's current value.
-			if (config.autoselect) {
+			if (optArgs.autoselect) {
 				// NOTE: This will usually fail for objects due to a variety of reasons.
 				const curValue      = State.getVar(varName);
 				const curValueIndex = options.findIndex(opt => sameValueZero(opt.value, curValue));
@@ -180,20 +220,22 @@ Macro.add(['cycle', 'listbox'], {
 			}
 		}
 
+		const varId = createSlug(varName);
+
 		// Set up and append the appropriate element to the output buffer.
 		if (this.name === 'cycle') {
 			const lastIndex = options.length - 1;
 
-			if (config.once && index === lastIndex) {
+			if (optArgs.once && index === lastIndex) {
 				jQuery(this.output)
 					.wikiWithOptions({ cleanup : false, profile : 'core' }, options[index].label);
 			}
 			else {
 				let cycleIndex = index;
-				jQuery(document.createElement('a'))
+				const $anchor = jQuery(document.createElement('a'))
 					.wikiWithOptions({ cleanup : false, profile : 'core' }, options[index].label)
-					.attr('id', `${this.name}-${varId}`)
-					.addClass(`macro-${this.name}`)
+					.attr('id', optArgs?.id ? optArgs.id : `${this.name}-${varId}`)
+					.addClass(optArgs.classes)
 					.ariaClick({
 						namespace : '.macros',
 						role      : 'button'
@@ -203,13 +245,17 @@ Macro.add(['cycle', 'listbox'], {
 						State.setVar(varName, options[cycleIndex].value);
 						$this.empty().wikiWithOptions({ cleanup : false, profile : 'core' }, options[cycleIndex].label);
 
-						if (config.once && cycleIndex === lastIndex) {
+						if (optArgs.once && cycleIndex === lastIndex) {
 							$this.off().contents().unwrap();
 						}
 
 						triggerEvent('change', this);
 					}))
 					.appendTo(this.output);
+
+				if (optArgs.disabled) {
+					$anchor.ariaDisabled(true);
+				}
 			}
 		}
 		else { // this.name === 'listbox'
@@ -224,16 +270,20 @@ Macro.add(['cycle', 'listbox'], {
 
 			$select
 				.attr({
-					id       : `${this.name}-${varId}`,
+					id       : optArgs?.id ? optArgs.id : `${this.name}-${varId}`,
 					name     : `${this.name}-${varId}`,
 					tabindex : 0 // for accessibility
 				})
-				.addClass(`macro-${this.name}`)
+				.addClass(optArgs.classes)
 				.val(index)
 				.on('change.macros', this.shadowHandler(function () {
 					State.setVar(varName, options[Number(this.value)].value);
 				}))
 				.appendTo(this.output);
+
+			if (optArgs.disabled) {
+				$select.ariaDisabled(true);
+			}
 		}
 
 		// Set the variable to the appropriate value, as requested.

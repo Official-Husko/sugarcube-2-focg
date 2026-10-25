@@ -13,30 +13,6 @@
 	current incarnation.
 */
 var scrubEventKey = (() => { // eslint-disable-line no-unused-vars, no-var
-	let separatorKey;
-	let decimalKey;
-
-	// Attempt to determine the player's 'Separator' and 'Decimal' key values
-	// based on their current locale.
-	if (typeof Intl !== 'undefined' && typeof Intl.NumberFormat === 'function') {
-		// NOTE: The current expression's use of the digit classes (`\d`, `\D`) does not
-		// handle all number forms.  Switching to Unicode property escapes for numbers
-		// (`/p{N}`, `/P{N}`) would resolve this, but requires the expression to be in a
-		// Unicode-aware mode—e.g., using the `u` flag.
-		const match = new Intl.NumberFormat().format(111111.5).match(/(\D*)\d+(\D*)\d$/);
-
-		if (match) {
-			separatorKey = match[1];
-			decimalKey   = match[2];
-		}
-	}
-
-	// Failover to US-centric values, if using `Intl.NumberFormat` failed.
-	if (!separatorKey && !decimalKey) {
-		separatorKey = ',';
-		decimalKey   = '.';
-	}
-
 	// Maps older `KeyboardEvent.key` values to more current/correct ones.
 	function scrubEventKey(key) {
 		switch (key) {
@@ -59,14 +35,33 @@ var scrubEventKey = (() => { // eslint-disable-line no-unused-vars, no-var
 			case 'VolumeDown':         return 'AudioVolumeDown';
 			case 'VolumeMute':         return 'AudioVolumeMute';
 			case 'Zoom':               return 'ZoomToggle';
-			case 'SelectMedia':        /* see below */
+			case 'SelectMedia':        /* as below */
 			case 'MediaSelect':        return 'LaunchMediaPlayer';
 			case 'Add':                return '+';
 			case 'Divide':             return '/';
 			case 'Multiply':           return '*';
 			case 'Subtract':           return '-';
-			case 'Decimal':            return decimalKey;
-			case 'Separator':          return separatorKey;
+			case 'Decimal':            /* as below */
+			case 'Separator':          {
+				let scrubbedKey;
+
+				// Attempt to determine the player's 'Separator' and 'Decimal' key values
+				// based on their current locale.
+				if (typeof Intl !== 'undefined' && typeof Intl.NumberFormat === 'function') {
+					const match = new Intl.NumberFormat().format(111111.5).match(/(\P{N}*)\p{N}+(\P{N}*)\p{N}$/u);
+
+					if (match) {
+						scrubbedKey = key === 'Separator' ? match[1] : match[2];
+					}
+				}
+
+				// Failover to US-centric values, if using `Intl.NumberFormat` failed.
+				if (!scrubbedKey) {
+					scrubbedKey = key === 'Separator' ? ',' : '.';
+				}
+
+				return scrubbedKey;
+			}
 		}
 
 		return key;

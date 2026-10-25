@@ -11,9 +11,6 @@
 	       warnDeprecated
 */
 
-/*
-	Save API (v3) static object.
-*/
 var Save = (() => { // eslint-disable-line no-unused-vars, no-var
 	// Save type pseudo-enumeration.
 	const SaveType = enumFrom({
@@ -934,9 +931,11 @@ var Save = (() => { // eslint-disable-line no-unused-vars, no-var
 			/* [/DEPRECATED] */
 		));
 
-		// Delta encode the state history and delete the non-encoded property.
-		save.state.delta = State.deltaEncode(save.state.history);
-		delete save.state.history;
+		if (!Config.history.disableDeltas) {
+			// Delta encode the state history and delete the non-encoded property.
+			save.state.delta = State.deltaEncode(save.state.history);
+			delete save.state.history;
+		}
 
 		return save;
 	}
@@ -955,7 +954,7 @@ var Save = (() => { // eslint-disable-line no-unused-vars, no-var
 			|| !Object.hasOwn(save, 'id')
 			|| !Object.hasOwn(save, 'state')
 			|| typeof save.state !== 'object'
-			|| !Object.hasOwn(save.state, 'delta')
+			|| !Object.hasOwn(save.state, Config.history.disableDeltas ? 'history' : 'delta')
 		) {
 			throw new Error(L10n.get('saveErrorInvalidData'));
 		}
@@ -964,11 +963,13 @@ var Save = (() => { // eslint-disable-line no-unused-vars, no-var
 			throw new Error(L10n.get('saveErrorIdMismatch'));
 		}
 
-		// Delta decode the state history and delete the encoded property.
-		/* eslint-disable no-param-reassign */
-		save.state.history = State.deltaDecode(save.state.delta);
-		delete save.state.delta;
-		/* eslint-enable no-param-reassign */
+		if (!Config.history.disableDeltas) {
+			// Delta decode the state history and delete the encoded property.
+			/* eslint-disable no-param-reassign */
+			save.state.history = State.deltaDecode(save.state.delta);
+			delete save.state.delta;
+			/* eslint-enable no-param-reassign */
+		}
 
 		/* [DEPRECATED] */
 		// TODO: Delete this on January 2026.

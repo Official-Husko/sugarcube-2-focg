@@ -6,21 +6,21 @@
 	Use of this source code is governed by a BSD 2-clause "Simplified" License, which may be found in the LICENSE file.
 
 ***********************************************************************************************************************/
-/* global Config, Engine, Has, Macro, SimpleAudio, Story */
+/* global Config, Engine, Has, Macro, SimpleAudio, getTypeOf */
 
 (() => {
 	if (Has.audio) {
-		const errorOnePlaybackAction = (cur, prev) => `only one playback action allowed per invocation, "${cur}" cannot be combined with "${prev}"`;
+		const errorOnePlaybackAction = (cur, prev) => `only one playback option allowed per invocation, "${cur}" cannot be combined with "${prev}"`;
 
 		/*
-			<<audio>>
+			<<audio ids option_list>>
 		*/
 		Macro.add('audio', {
 			handler() {
 				if (this.args.length < 2) {
 					const errors = [];
 					if (this.args.length < 1) { errors.push('track and/or group IDs'); }
-					if (this.args.length < 2) { errors.push('actions'); }
+					if (this.args.length < 2) { errors.push('options'); }
 					return this.error(`no ${errors.join(' or ')} specified`);
 				}
 
@@ -34,224 +34,243 @@
 					return this.error(ex.message);
 				}
 
-				const args = this.args.slice(1);
-				let action;
-				let fadeOver = 5;
-				let fadeTo;
-				let loop;
-				let mute;
-				let passage;
-				let time;
-				let volume;
+				const optArgs = Object.assign(Object.create(null), {
+					fadeOver : 5
+				});
 
-				// Process arguments.
-				while (args.length > 0) {
-					const arg = args.shift();
-					let raw;
-
-					switch (arg) {
+				// Process optional arguments.
+				for (let i = 1; i < this.args.length; ++i) {
+					switch (this.args[i]) {
 						case 'load':
 						case 'pause':
 						case 'play':
 						case 'stop':
 						case 'unload': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							action = arg;
+							optArgs.action = this.args[i];
 							break;
 						}
 
 						case 'fadein': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							action = 'fade';
-							fadeTo = 1;
+							optArgs.action = 'fade';
+							optArgs.fadeTo = 1;
 							break;
 						}
 
 						case 'fadeout': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							action = 'fade';
-							fadeTo = 0;
+							optArgs.action = 'fade';
+							optArgs.fadeTo = 0;
 							break;
 						}
 
 						case 'fadeto': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							if (args.length === 0) {
-								return this.error('fadeto missing required level value');
+							optArgs.action = 'fade';
+
+							if (++i >= this.args.length) {
+								return this.error('fadeto option missing required level value');
 							}
 
-							action = 'fade';
-							raw = args.shift();
-							fadeTo = Number.parseFloat(raw);
+							optArgs.fadeTo = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(fadeTo) || !Number.isFinite(fadeTo)) {
-								return this.error(`cannot parse fadeto: ${raw}`);
+							if (
+								Number.isNaN(optArgs.fadeTo)
+								|| !Number.isFinite(optArgs.fadeTo)
+								|| optArgs.fadeTo < 0
+							) {
+								return this.error(`fadeto option value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
 							break;
 						}
 
 						case 'fadeoverto': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							if (args.length < 2) {
-								const errors = [];
-								if (args.length < 1) { errors.push('seconds'); }
-								if (args.length < 2) { errors.push('level'); }
-								return this.error(`fadeoverto missing required ${errors.join(' and ')} value${errors.length > 1 ? 's' : ''}`);
+							optArgs.action = 'fade';
+
+							if (++i >= this.args.length) {
+								return this.error('fadeoverto option missing required seconds value');
 							}
 
-							action = 'fade';
-							raw = args.shift();
-							fadeOver = Number.parseFloat(raw);
+							optArgs.fadeOver = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(fadeOver) || !Number.isFinite(fadeOver)) {
-								return this.error(`cannot parse fadeoverto: ${raw}`);
+							if (
+								Number.isNaN(optArgs.fadeOver)
+								|| !Number.isFinite(optArgs.fadeOver)
+								|| optArgs.fadeOver < 0
+							) {
+								return this.error(`fadeoverto option seconds value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
-							raw = args.shift();
-							fadeTo = Number.parseFloat(raw);
+							if (++i >= this.args.length) {
+								return this.error('fadeoverto option missing required level value');
+							}
 
-							if (Number.isNaN(fadeTo) || !Number.isFinite(fadeTo)) {
-								return this.error(`cannot parse fadeoverto: ${raw}`);
+							optArgs.fadeTo = Number.parseFloat(this.args[i]);
+
+							if (
+								Number.isNaN(optArgs.fadeTo)
+								|| !Number.isFinite(optArgs.fadeTo)
+								|| optArgs.fadeTo < 0
+							) {
+								return this.error(`fadeoverto option level value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
 							break;
 						}
 
 						case 'volume': {
-							if (args.length === 0) {
-								return this.error('volume missing required level value');
+							if (++i >= this.args.length) {
+								return this.error('volume option missing required level value');
 							}
 
-							raw = args.shift();
-							volume = Number.parseFloat(raw);
+							optArgs.volume = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(volume) || !Number.isFinite(volume)) {
-								return this.error(`cannot parse volume: ${raw}`);
+							if (
+								Number.isNaN(optArgs.volume)
+								|| !Number.isFinite(optArgs.volume)
+								|| optArgs.volume < 0
+							) {
+								return this.error(`volume option value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
 							break;
 						}
 
 						case 'mute':
-						case 'unmute':
-							mute = arg === 'mute';
+						case 'unmute': {
+							optArgs.mute = this.args[i] === 'mute';
 							break;
+						}
 
 						case 'time': {
-							if (args.length === 0) {
-								return this.error('time missing required seconds value');
+							if (++i >= this.args.length) {
+								return this.error('time option missing required seconds value');
 							}
 
-							raw = args.shift();
-							time = Number.parseFloat(raw);
+							optArgs.time = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(time) || !Number.isFinite(time)) {
-								return this.error(`cannot parse time: ${raw}`);
+							if (
+								Number.isNaN(optArgs.time)
+								|| !Number.isFinite(optArgs.time)
+								|| optArgs.time < 0
+							) {
+								return this.error(`time option value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
 							break;
 						}
 
 						case 'loop':
-						case 'unloop':
-							loop = arg === 'loop';
+						case 'unloop': {
+							optArgs.loop = this.args[i] === 'loop';
 							break;
+						}
 
 						case 'goto': {
-							if (args.length === 0) {
-								return this.error('goto missing required passage name');
+							if (++i >= this.args.length) {
+								return this.error('goto option missing required passage name');
 							}
 
-							raw = args.shift();
-
-							if (typeof raw === 'object') {
-								// Argument was in wiki link syntax.
-								passage = raw.link;
+							if (typeof this.args[i] === 'object') {
+								if (this.args[i].isLink) {
+									optArgs.passage = this.args[i].link;
+								}
+								else {
+									return this.error(`goto option value was of an incompatible type: ${getTypeOf(this.args[i])}`);
+								}
 							}
 							else {
-								// Argument was simply the passage name.
-								passage = raw;
+								optArgs.passage = String(this.args[i]).trim();
 							}
 
-							if (!Story.has(passage)) {
-								return this.error(`passage "${passage}" does not exist`);
+							if (optArgs.passage === '') {
+								return this.error('goto option value cannot be an empty string');
 							}
 
 							break;
 						}
 
-						default:
-							return this.error(`unknown action: ${arg}`);
+						default: {
+							return this.error(`unknown option: ${this.args[i]}`);
+						}
 					}
 				}
 
 				try {
-					if (volume != null) { // nullish test
-						selected.volume(volume);
+					if (optArgs?.volume != null) { // nullish test
+						selected.volume(optArgs.volume);
 					}
 
-					if (time != null) { // nullish test
-						selected.time(time);
+					if (optArgs?.time != null) { // nullish test
+						selected.time(optArgs.time);
 					}
 
-					if (mute != null) { // nullish test
-						selected.mute(mute);
+					if (optArgs?.mute != null) { // nullish test
+						selected.mute(optArgs.mute);
 					}
 
-					if (loop != null) { // nullish test
-						selected.loop(loop);
+					if (optArgs?.loop != null) { // nullish test
+						selected.loop(optArgs.loop);
 					}
 
-					if (passage != null) { // nullish test
+					if (optArgs?.passage != null) { // nullish test
 						const nsEnded = `ended.macros.macro-${this.name}_goto`;
 						selected
 							.off(nsEnded)
 							.one(nsEnded, () => {
 								selected.off(nsEnded);
-								Engine.play(passage);
+								Engine.play(optArgs.passage);
 							});
 					}
 
-					switch (action) {
-						case 'fade':
-							selected.fade(fadeOver, fadeTo);
+					switch (optArgs?.action) {
+						case 'fade': {
+							selected.fade(optArgs.fadeOver, optArgs.fadeTo);
 							break;
+						}
 
-						case 'load':
+						case 'load': {
 							selected.load();
 							break;
+						}
 
-						case 'pause':
+						case 'pause': {
 							selected.pause();
 							break;
+						}
 
-						case 'play':
+						case 'play': {
 							selected.playWhenAllowed();
 							break;
+						}
 
-						case 'stop':
+						case 'stop': {
 							selected.stop();
 							break;
+						}
 
-						case 'unload':
+						case 'unload': {
 							selected.unload();
 							break;
+						}
 					}
 
 					// Custom debug view setup.
@@ -260,7 +279,7 @@
 					}
 				}
 				catch (ex) {
-					return this.error(`error executing action: ${ex.message}`);
+					return this.error(`error executing option: ${ex.message}`);
 				}
 			}
 		});
@@ -328,7 +347,7 @@
 				const groupId  = String(this.args[0]).trim();
 				const trackIds = [];
 
-				for (let i = 1, len = this.payload.length; i < len; ++i) {
+				for (let i = 1; i < this.payload.length; ++i) {
 					if (this.payload[i].args.length < 1) {
 						return this.error('no track ID specified');
 					}
@@ -367,7 +386,7 @@
 
 		/*
 			<<createplaylist list_id>>
-				<<track track_id action_list>>
+				<<track track_id option_list>>
 				…
 			<</createplaylist>>
 		*/
@@ -395,64 +414,62 @@
 				const listId    = String(this.args[0]).trim();
 				const trackObjs = [];
 
-				for (let i = 1, len = this.payload.length; i < len; ++i) {
-					if (this.payload[i].args.length === 0) {
+				for (let pi = 1; pi < this.payload.length; ++pi) {
+					const payload = this.payload[pi];
+
+					if (payload.args.length === 0) {
 						return this.error('no track ID specified');
 					}
 
-					const trackObj = { id : String(this.payload[i].args[0]).trim() };
-					const args     = this.payload[i].args.slice(1);
+					const trackObj = {
+						id : String(payload.args[0]).trim()
+					};
 
-					// Process arguments.
-					while (args.length > 0) {
-						const arg = args.shift();
-						let raw;
-						let parsed;
-
-						switch (arg) {
-							case 'own':
+					// Process optional arguments.
+					for (let i = 1; i < payload.args.length; ++i) {
+						switch (payload.args[i]) {
+							case 'own': {
 								trackObj.own = true;
 								break;
-
-							case 'rate': {
-								// if (args.length === 0) {
-								// 	return this.error('rate missing required speed value');
-								// }
-								//
-								// raw = args.shift();
-								// parsed = Number.parseFloat(raw);
-								//
-								// if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
-								// 	return this.error(`cannot parse rate: ${raw}`);
-								// }
-								//
-								// trackObj.rate = parsed;
-
-								if (args.length > 0) {
-									args.shift();
-								}
-
-								break;
 							}
+
+							/* eslint-disable max-len */
+							// case 'rate': {
+							// 	if (++i >= payload.args.length) {
+							// 		return this.error('rate option missing required speed value');
+							// 	}
+							//
+							// 	trackObj.rate = Number.parseFloat(payload.args[i]);
+							//
+							// 	if (Number.isNaN(trackObj.rate) || !Number.isFinite(trackObj.rate)) {
+							// 		return this.error(`rate option value must be a decimal number (received: ${payload.args[i]})`);
+							// 	}
+							//
+							// 	break;
+							// }
+							/* eslint-enable max-len */
 
 							case 'volume': {
-								if (args.length === 0) {
-									return this.error('volume missing required level value');
+								if (++i >= payload.args.length) {
+									return this.error('volume option missing required level value');
 								}
 
-								raw = args.shift();
-								parsed = Number.parseFloat(raw);
+								trackObj.volume = Number.parseFloat(payload.args[i]);
 
-								if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
-									return this.error(`cannot parse volume: ${raw}`);
+								if (
+									Number.isNaN(trackObj.volume)
+									|| !Number.isFinite(trackObj.volume)
+									|| trackObj.volume < 0
+								) {
+									return this.error(`volume option value must be a decimal number greater-than or equal-to 0 (received: ${payload.args[i]})`);
 								}
 
-								trackObj.volume = parsed;
 								break;
 							}
 
-							default:
-								return this.error(`unknown action: ${arg}`);
+							default: {
+								return this.error(`unknown option: ${payload.args[i]}`);
+							}
 						}
 					}
 
@@ -461,7 +478,7 @@
 					// Custom debug view setup for the current `<<track>>`.
 					if (Config.debug) {
 						this
-							.createDebugView(this.payload[i].name, this.payload[i].source)
+							.createDebugView(payload.name, payload.source)
 							.modes({
 								nonvoid : false,
 								hidden  : true
@@ -494,88 +511,89 @@
 		Macro.add('masteraudio', {
 			handler() {
 				if (this.args.length === 0) {
-					return this.error('no actions specified');
+					return this.error('no options specified');
 				}
 
-				const args = this.args.slice(0);
-				let action;
-				let mute;
-				let muteOnHide;
-				let volume;
+				const optArgs = Object.create(null);
 
-				// Process arguments.
-				while (args.length > 0) {
-					const arg = args.shift();
-					let raw;
-
-					switch (arg) {
+				// Process optional arguments.
+				for (let i = 0; i < this.args.length; ++i) {
+					switch (this.args[i]) {
 						case 'load':
 						case 'stop':
 						case 'unload': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							action = arg;
-
+							optArgs.action = this.args[i];
 							break;
 						}
 
 						case 'mute':
-						case 'unmute':
-							mute = arg === 'mute';
+						case 'unmute': {
+							optArgs.mute = this.args[i] === 'mute';
 							break;
+						}
 
 						case 'muteonhide':
-						case 'nomuteonhide':
-							muteOnHide = arg === 'muteonhide';
+						case 'nomuteonhide': {
+							optArgs.muteOnHide = this.args[i] === 'muteonhide';
 							break;
+						}
 
 						case 'volume': {
-							if (args.length === 0) {
-								return this.error('volume missing required level value');
+							if (++i >= this.args.length) {
+								return this.error('volume option missing required level value');
 							}
 
-							raw = args.shift();
-							volume = Number.parseFloat(raw);
+							optArgs.volume = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(volume) || !Number.isFinite(volume)) {
-								return this.error(`cannot parse volume: ${raw}`);
+							if (
+								Number.isNaN(optArgs.volume)
+								|| !Number.isFinite(optArgs.volume)
+								|| optArgs.volume < 0
+							) {
+								return this.error(`volume option value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
 							break;
 						}
 
-						default:
-							return this.error(`unknown action: ${arg}`);
+						default: {
+							return this.error(`unknown option: ${this.args[i]}`);
+						}
 					}
 				}
 
 				try {
-					if (mute != null) { // nullish test
-						SimpleAudio.mute(mute);
+					if (optArgs?.mute != null) { // nullish test
+						SimpleAudio.mute(optArgs.mute);
 					}
 
-					if (muteOnHide != null) { // nullish test
-						SimpleAudio.muteOnHidden(muteOnHide);
+					if (optArgs?.muteOnHide != null) { // nullish test
+						SimpleAudio.muteOnHidden(optArgs.muteOnHide);
 					}
 
-					if (volume != null) { // nullish test
-						SimpleAudio.volume(volume);
+					if (optArgs?.volume != null) { // nullish test
+						SimpleAudio.volume(optArgs.volume);
 					}
 
-					switch (action) {
-						case 'load':
+					switch (optArgs?.action) {
+						case 'load': {
 							SimpleAudio.load();
 							break;
+						}
 
-						case 'stop':
+						case 'stop': {
 							SimpleAudio.stop();
 							break;
+						}
 
-						case 'unload':
+						case 'unload': {
 							SimpleAudio.unload();
 							break;
+						}
 					}
 
 					// Custom debug view setup.
@@ -584,20 +602,20 @@
 					}
 				}
 				catch (ex) {
-					return this.error(`error executing action: ${ex.message}`);
+					return this.error(`error executing option: ${ex.message}`);
 				}
 			}
 		});
 
 		/*
-			<<playlist list_id action_list>>
+			<<playlist list_id option_list>>
 		*/
 		Macro.add('playlist', {
 			handler() {
 				if (this.args.length < 2) {
 					const errors = [];
 					if (this.args.length < 1) { errors.push('list ID'); }
-					if (this.args.length < 2) { errors.push('actions'); }
+					if (this.args.length < 2) { errors.push('options'); }
 					return this.error(`no ${errors.join(' or ')} specified`);
 				}
 
@@ -607,186 +625,200 @@
 					return this.error(`playlist "${id}" does not exist`);
 				}
 
-				const list = SimpleAudio.lists.get(id);
-				const args = this.args.slice(1);
-				let action;
-				let fadeOver = 5;
-				let fadeTo;
-				let loop;
-				let mute;
-				let shuffle;
-				let volume;
+				const list    = SimpleAudio.lists.get(id);
+				const optArgs = Object.assign(Object.create(null), {
+					fadeOver : 5
+				});
 
-				// Process arguments.
-				while (args.length > 0) {
-					const arg = args.shift();
-					let raw;
-
-					switch (arg) {
+				// Process optional arguments.
+				for (let i = 1; i < this.args.length; ++i) {
+					switch (this.args[i]) {
 						case 'load':
 						case 'pause':
 						case 'play':
 						case 'skip':
 						case 'stop':
 						case 'unload': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							action = arg;
+							optArgs.action = this.args[i];
 							break;
 						}
 
 						case 'fadein': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							action = 'fade';
-							fadeTo = 1;
+							optArgs.action = 'fade';
+							optArgs.fadeTo = 1;
 							break;
 						}
 
 						case 'fadeout': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							action = 'fade';
-							fadeTo = 0;
+							optArgs.action = 'fade';
+							optArgs.fadeTo = 0;
 							break;
 						}
 
 						case 'fadeto': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							if (args.length === 0) {
-								return this.error('fadeto missing required level value');
+							optArgs.action = 'fade';
+
+							if (++i >= this.args.length) {
+								return this.error('fadeto option missing required level value');
 							}
 
-							action = 'fade';
-							raw = args.shift();
-							fadeTo = Number.parseFloat(raw);
+							optArgs.fadeTo = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(fadeTo) || !Number.isFinite(fadeTo)) {
-								return this.error(`cannot parse fadeto: ${raw}`);
+							if (
+								Number.isNaN(optArgs.fadeTo)
+								|| !Number.isFinite(optArgs.fadeTo)
+								|| optArgs.fadeTo < 0
+							) {
+								return this.error(`fadeto option value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
 							break;
 						}
 
 						case 'fadeoverto': {
-							if (action) {
-								return this.error(errorOnePlaybackAction(arg, action));
+							if (optArgs?.action) {
+								return this.error(errorOnePlaybackAction(this.args[i], optArgs.action));
 							}
 
-							if (args.length < 2) {
-								const errors = [];
-								if (args.length < 1) { errors.push('seconds'); }
-								if (args.length < 2) { errors.push('level'); }
-								return this.error(`fadeoverto missing required ${errors.join(' and ')} value${errors.length > 1 ? 's' : ''}`);
+							optArgs.action = 'fade';
+
+							if (++i >= this.args.length) {
+								return this.error('fadeoverto option missing required seconds value');
 							}
 
-							action = 'fade';
-							raw = args.shift();
-							fadeOver = Number.parseFloat(raw);
+							optArgs.fadeOver = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(fadeOver) || !Number.isFinite(fadeOver)) {
-								return this.error(`cannot parse fadeoverto: ${raw}`);
+							if (
+								Number.isNaN(optArgs.fadeOver)
+								|| !Number.isFinite(optArgs.fadeOver)
+								|| optArgs.fadeOver < 0
+							) {
+								return this.error(`fadeoverto option seconds value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
-							raw = args.shift();
-							fadeTo = Number.parseFloat(raw);
+							if (++i >= this.args.length) {
+								return this.error('fadeoverto option missing required level value');
+							}
 
-							if (Number.isNaN(fadeTo) || !Number.isFinite(fadeTo)) {
-								return this.error(`cannot parse fadeoverto: ${raw}`);
+							optArgs.fadeTo = Number.parseFloat(this.args[i]);
+
+							if (
+								Number.isNaN(optArgs.fadeTo)
+								|| !Number.isFinite(optArgs.fadeTo)
+								|| optArgs.fadeTo < 0
+							) {
+								return this.error(`fadeoverto option level value must be a decimal number greater-than or equal-to 0 (received: ${this.args[i]})`);
 							}
 
 							break;
 						}
 
 						case 'volume': {
-							if (args.length === 0) {
-								return this.error('volume missing required level value');
+							if (++i >= this.args.length) {
+								return this.error('volume option missing required level value');
 							}
 
-							raw = args.shift();
-							volume = Number.parseFloat(raw);
+							optArgs.volume = Number.parseFloat(this.args[i]);
 
-							if (Number.isNaN(volume) || !Number.isFinite(volume)) {
-								return this.error(`cannot parse volume: ${raw}`);
+							if (Number.isNaN(optArgs.volume) || !Number.isFinite(optArgs.volume)) {
+								return this.error(`cannot parse volume: ${this.args[i]}`);
 							}
 
 							break;
 						}
 
 						case 'mute':
-						case 'unmute':
-							mute = arg === 'mute';
+						case 'unmute': {
+							optArgs.mute = this.args[i] === 'mute';
 							break;
+						}
 
 						case 'loop':
-						case 'unloop':
-							loop = arg === 'loop';
+						case 'unloop': {
+							optArgs.loop = this.args[i] === 'loop';
 							break;
+						}
 
 						case 'shuffle':
-						case 'unshuffle':
-							shuffle = arg === 'shuffle';
+						case 'unshuffle': {
+							optArgs.shuffle = this.args[i] === 'shuffle';
 							break;
+						}
 
-						default:
-							return this.error(`unknown action: ${arg}`);
+						default: {
+							return this.error(`unknown option: ${this.args[i]}`);
+						}
 					}
 				}
 
 				try {
-					if (volume != null) { // nullish test
-						list.volume(volume);
+					if (optArgs?.volume != null) { // nullish test
+						list.volume(optArgs.volume);
 					}
 
-					if (mute != null) { // nullish test
-						list.mute(mute);
+					if (optArgs?.mute != null) { // nullish test
+						list.mute(optArgs.mute);
 					}
 
-					if (loop != null) { // nullish test
-						list.loop(loop);
+					if (optArgs?.loop != null) { // nullish test
+						list.loop(optArgs.loop);
 					}
 
-					if (shuffle != null) { // nullish test
-						list.shuffle(shuffle);
+					if (optArgs?.shuffle != null) { // nullish test
+						list.shuffle(optArgs.shuffle);
 					}
 
-					switch (action) {
-						case 'fade':
-							list.fade(fadeOver, fadeTo);
+					switch (optArgs?.action) {
+						case 'fade': {
+							list.fade(optArgs.fadeOver, optArgs.fadeTo);
 							break;
+						}
 
-						case 'load':
+						case 'load': {
 							list.load();
 							break;
+						}
 
-						case 'pause':
+						case 'pause': {
 							list.pause();
 							break;
+						}
 
-						case 'play':
+						case 'play': {
 							list.playWhenAllowed();
 							break;
+						}
 
-						case 'skip':
+						case 'skip': {
 							list.skip();
 							break;
+						}
 
-						case 'stop':
+						case 'stop': {
 							list.stop();
 							break;
+						}
 
-						case 'unload':
+						case 'unload': {
 							list.unload();
 							break;
+						}
 					}
 
 					// Custom debug view setup.
@@ -795,7 +827,7 @@
 					}
 				}
 				catch (ex) {
-					return this.error(`error executing action: ${ex.message}`);
+					return this.error(`error executing option: ${ex.message}`);
 				}
 			}
 		});

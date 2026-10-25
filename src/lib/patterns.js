@@ -139,23 +139,16 @@ var Patterns = (() => { // eslint-disable-line no-unused-vars, no-var
 	const cssIdOrClassSigil = '[#.]';
 
 	// CSS image transclusion template pattern.
-	//
-	// NOTE: The alignment syntax isn't supported, but removing it might break uses
-	// of the template in the wild, so we leave it alone for now.
-	const cssImage = '\\[[<>]?[Ii][Mm][Gg]\\[(?:\\s|\\S)*?\\]\\]+';
+	const cssImage = '\\[[Ii][Mm][Gg]\\[(?:\\s|\\S)*?\\]\\]+';
 
 	// Inline CSS pattern.
 	const inlineCss = (() => {
-		/* [DEPRECATED] */
-		const twStyle   = `(${anyLetter}+)\\(([^\\)\\|\\n]+)\\):`;
-		/* [/DEPRECATED] */
 		const cssStyle  = `${spaceNoTerminator}*(${anyLetter}+)${spaceNoTerminator}*:([^;\\|\\n]+);`;
 		const idOrClass = `${spaceNoTerminator}*((?:${cssIdOrClassSigil}${anyLetter}+${spaceNoTerminator}*)+);`;
 
-		// [1,2] = style(value):
-		// [3,4] = style:value;
-		// [5]   = #id.className;
-		return `${twStyle}|${cssStyle}|${idOrClass}`;
+		// [1,2] = cssPropertyName:value;
+		// [3]   = #id.className;
+		return `${cssStyle}|${idOrClass}`;
 	})();
 
 	// URL pattern.

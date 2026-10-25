@@ -16,10 +16,10 @@
 	// `:redo-internal` events to `<<do>>` macros matching the given
 	// selector.
 	jQuery(document).on(':redo', ev => {
-		const evTags   = ev.detail && ev.detail.tags || [];
-		const selector = evTags.length === 0
+		const redoTags = ev.detail && ev.detail.tags || [];
+		const selector = redoTags.length === 0
 			? `.${eventClass}`
-			: evTags.map(tag => `.${eventClass}[data-do-tags~="${tag}"]`).join(', ');
+			: redoTags.map(tag => `.${eventClass}[data-do-tags~="${tag}"]`).join(', ');
 
 		triggerEvent(':redo-internal', jQuery(selector), {
 			bubbles : false,
@@ -28,54 +28,62 @@
 	});
 
 	/*
-		<<do [tag tags] [element tag]>>
+		<<do [element tag] [tag tags]>>
 	*/
 	Macro.add('do', {
 		tags : null,
 
 		handler() {
-			let elTag = 'span';
-			let tags  = [];
+			const optArgs = Object.assign(Object.create(null), {
+				classes    : [`macro-${this.name}`, eventClass],
+				elTag      : 'span',
+				tags       : [],
+				transition : false
+			});
 
 			// Process optional arguments.
-			const options = this.args.slice();
-
-			while (options.length > 0) {
-				const option = options.shift();
-
-				switch (option) {
-					case 'tag': {
-						if (options.length === 0) {
-							return this.error('tag option missing required tag name(s)');
+			for (let i = 0; i < this.args.length; ++i) {
+				switch (this.args[i]) {
+					case 'element': {
+						if (++i >= this.args.length) {
+							return this.error('element option missing required value');
 						}
 
-						const raw = String(options.shift()).trim();
+						if (typeof this.args[i] !== 'string') {
+							return this.error('element option value must be a string');
+						}
+
+						optArgs.elTag = this.args[i].trim();
+
+						if (optArgs.elTag === '') {
+							return this.error('element option value cannot be an empty string');
+						}
+
+						break;
+					}
+
+					case 'tag': {
+						if (++i >= this.args.length) {
+							return this.error('tag option missing required value');
+						}
+
+						if (typeof this.args[i] !== 'string') {
+							return this.error('tag option value must be a string');
+						}
+
+						const raw = this.args[i].trim();
 
 						if (raw === '') {
-							throw new Error('tag option tag name(s) must be non-empty');
+							return this.error('tag option value cannot be an empty string');
 						}
 
-						tags = String(raw).trim().splitOrEmpty(/\s+/);
-
+						optArgs.tags = raw.splitOrEmpty(/\s+/);
 						break;
 					}
 
-					case 'element': {
-						if (options.length === 0) {
-							return this.error('element option missing required element tag name');
-						}
-
-						elTag = String(options.shift()).trim();
-
-						if (elTag === '') {
-							throw new Error('element option tag name must be non-empty');
-						}
-
-						break;
+					default: {
+						return this.error(`unknown option: ${this.args[i]}`);
 					}
-
-					default:
-						return this.error(`unknown option: ${option}`);
 				}
 			}
 
@@ -89,13 +97,13 @@
 			// Custom debug view setup.
 			if (Config.debug) {
 				// QUESTION: Should this `elTag` check be more robust?
-				this.debugView.modes({ block : elTag !== 'span' });
+				this.debugView.modes({ block : optArgs.elTag !== 'span' });
 			}
 
-			// Create a target to hold our contents.
-			const $target = jQuery(document.createElement(elTag))
-				.addClass(`macro-${this.name} ${eventClass}`)
-				.attr('data-do-tags', tags.join(' '))
+			// Create an element to hold our contents and append it to the output.
+			const $target = jQuery(document.createElement(optArgs.elTag))
+				.addClass(optArgs.classes)
+				.attr('data-do-tags', optArgs.tags.join(' '))
 				.wiki(contents)
 				.on(':redo-internal', jQuery.throttle(
 					Engine.DOM_DELAY,

@@ -13,57 +13,39 @@
 
 var UI = (() => { // eslint-disable-line no-unused-vars, no-var
 	/*******************************************************************************
-		Utility Functions.
+		Built-in Dialog Functions.
 	*******************************************************************************/
 
-	function assembleLinkList(passage, listEl) {
-		let list = listEl;
-
-		// Cache the value of `Config.debug`, then disable it during this method's run.
-		const debugState = Config.debug;
-		Config.debug = false;
-
-		try {
-			if (list == null) { // nullish test
-				list = document.createElement('ul');
-			}
-
-			// Wikify the content of the given source passage into a fragment.
-			const frag = document.createDocumentFragment();
-			new Wikifier(frag, Story.get(passage).processText().trim(), { cleanup : false });
-
-			// Gather the text of any error elements within the fragment…
-			const errors = Array.from(frag.querySelectorAll('.error'))
-				.map(errEl => errEl.textContent.replace(errorPrologRE, ''));
-
-			// …and throw an exception, if there were any errors.
-			if (errors.length > 0) {
-				throw new Error(errors.join('; '));
-			}
-
-			while (frag.hasChildNodes()) {
-				const node = frag.firstChild;
-
-				// Create list items for <a>-element nodes.
-				if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.toUpperCase() === 'A') {
-					const li = document.createElement('li');
-					list.appendChild(li);
-					li.appendChild(node);
-				}
-
-				// Discard non-<a>-element nodes.
-				else {
-					frag.removeChild(node);
-				}
-			}
-		}
-		finally {
-			// Restore `Config.debug` to its original value.
-			Config.debug = debugState;
-		}
-
-		return list;
+	function openAlert(message, /* options, closeFn */ ...args) {
+		Dialog
+			.create(L10n.get('alertTitle'), 'alert')
+			.append(
+				  `<p>${message}</p><ul class="buttons">`
+				+ `<li><button id="alert-ok" class="ui-close">${L10n.get(['alertTextOk', 'textOk'])}</button></li>`
+				+ '</ul>'
+			)
+			.open(...args);
 	}
+
+	function openRestart(/* options, closeFn */ ...args) {
+		buildRestart();
+		Dialog.open(...args);
+	}
+
+	function openSaves(/* options, closeFn */ ...args) {
+		buildSaves();
+		Dialog.open(...args);
+	}
+
+	function openSettings(/* options, closeFn */ ...args) {
+		buildSettings();
+		Dialog.open(...args);
+	}
+
+
+	/*******************************************************************************
+		Built-in Dialog Helper Functions.
+	*******************************************************************************/
 
 	function buildRestart() {
 		if (BUILD_DEBUG) { console.log('[UI/buildRestart()]'); }
@@ -683,14 +665,12 @@ var UI = (() => { // eslint-disable-line no-unused-vars, no-var
 				+     `<li><button id="settings-reset">${L10n.get('settingsTextReset')}</button></li>`
 				+ '</ul>'
 			)
+			// NOTE: Instead of adding '.ui-close' to '#settings-reset' (to receive the
+			// use of the default delegated dialog close handler), we set up a special
+			// case close handler here.  We do this to ensure that the invocation of
+			// `window.location.reload()` happens after the dialog has fully closed.  If
+			// we did not, then a race condition could occur, causing display shenanigans.
 			.find('#settings-reset')
-			/*
-				Instead of adding '.ui-close' to '#settings-reset' (to receive the use of the default
-				delegated dialog close handler), we set up a special case close handler here.  We
-				do this to ensure that the invocation of `window.location.reload()` happens after the
-				dialog has fully closed.  If we did not, then a race condition could occur, causing
-				display shenanigans.
-			*/
 			.ariaClick({ one : true }, () => {
 				jQuery(document).one(':dialogclosed', () => {
 					Setting.reset();
@@ -702,39 +682,62 @@ var UI = (() => { // eslint-disable-line no-unused-vars, no-var
 		return true;
 	}
 
-	function update() {
-		triggerEvent(':uiupdate');
-	}
-
 
 	/*******************************************************************************
-		Built-in Dialog Functions.
+		Utility Functions.
 	*******************************************************************************/
 
-	function openAlert(message, /* options, closeFn */ ...args) {
-		Dialog
-			.create(L10n.get('alertTitle'), 'alert')
-			.append(
-				  `<p>${message}</p><ul class="buttons">`
-				+ `<li><button id="alert-ok" class="ui-close">${L10n.get(['alertTextOk', 'textOk'])}</button></li>`
-				+ '</ul>'
-			)
-			.open(...args);
+	function assembleLinkList(passage, listEl) {
+		let list = listEl;
+
+		// Cache the value of `Config.debug`, then disable it during this method's run.
+		const debugState = Config.debug;
+		Config.debug = false;
+
+		try {
+			if (list == null) { // nullish test
+				list = document.createElement('ul');
+			}
+
+			// Wikify the content of the given source passage into a fragment.
+			const frag = document.createDocumentFragment();
+			new Wikifier(frag, Story.get(passage).processText().trim(), { cleanup : false });
+
+			// Gather the text of any error elements within the fragment…
+			const errors = Array.from(frag.querySelectorAll('.error'))
+				.map(errEl => errEl.textContent.replace(errorPrologRE, ''));
+
+			// …and throw an exception, if there were any errors.
+			if (errors.length > 0) {
+				throw new Error(errors.join('; '));
+			}
+
+			while (frag.hasChildNodes()) {
+				const node = frag.firstChild;
+
+				// Create list items for <a>-element nodes.
+				if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.toUpperCase() === 'A') {
+					const li = document.createElement('li');
+					list.appendChild(li);
+					li.appendChild(node);
+				}
+
+				// Discard non-<a>-element nodes.
+				else {
+					frag.removeChild(node);
+				}
+			}
+		}
+		finally {
+			// Restore `Config.debug` to its original value.
+			Config.debug = debugState;
+		}
+
+		return list;
 	}
 
-	function openRestart(/* options, closeFn */ ...args) {
-		buildRestart();
-		Dialog.open(...args);
-	}
-
-	function openSaves(/* options, closeFn */ ...args) {
-		buildSaves();
-		Dialog.open(...args);
-	}
-
-	function openSettings(/* options, closeFn */ ...args) {
-		buildSettings();
-		Dialog.open(...args);
+	function update() {
+		triggerEvent(':uiupdate');
 	}
 
 
@@ -743,18 +746,20 @@ var UI = (() => { // eslint-disable-line no-unused-vars, no-var
 	*******************************************************************************/
 
 	return Object.preventExtensions(Object.create(null, {
-		// Utility Functions.
-		assembleLinkList : { value : assembleLinkList },
-		buildRestart     : { value : buildRestart },
-		buildSaves       : { value : buildSaves },
-		buildSettings    : { value : buildSettings },
-		update           : { value : update },
-
 		// Built-in Dialog Functions.
 		alert    : { value : openAlert },
 		restart  : { value : openRestart },
 		saves    : { value : openSaves },
-		settings : { value : openSettings }
+		settings : { value : openSettings },
+
+		// Built-in Dialog Helper Functions.
+		buildRestart  : { value : buildRestart },
+		buildSaves    : { value : buildSaves },
+		buildSettings : { value : buildSettings },
+
+		// Utility Functions.
+		assembleLinkList : { value : assembleLinkList },
+		update           : { value : update }
 
 		/* [DEPRECATED] */
 		/* eslint-disable comma-style */

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /***********************************************************************************************************************
 
-	build.js (v1.9.7, 2025-04-11)
+	build.js (v1.9.9, 2025-12-09)
 		A Node.js-hosted build script for SugarCube
 
 	Copyright © 2013–2025 Thomas Michael Edwards <thomasmedwards@gmail.com>. All rights reserved.
@@ -36,8 +36,7 @@ const CONFIG = {
 			'src/lib/visibility.js',
 			'src/util/',
 			'src/storage/simplestore.js',
-			'src/storage/adapters/webstorage.js',
-			'src/storage/adapters/cookie.js',
+			'src/storage/adapters/',
 			'src/lib/debugview.js',
 			'src/lib/nodetyper.js',
 			'src/lib/stylewrapper.js',
@@ -98,16 +97,12 @@ const CONFIG = {
 	},
 	libs : [
 		// The ordering herein is significant.
-		'vendor/classList.min.js',
-		'vendor/es5-shim.min.js',
-		'vendor/es6-shim.min.js',
 		'vendor/jquery.min.js',
 		'vendor/jquery.ba-throttle-debounce.min.js',
 		'vendor/imagesloaded.pkgd.min.js',
 		'vendor/lz-string.min.js',
 		'vendor/FileSaver.min.js',
-		'vendor/seedrandom.min.js',
-		'vendor/console-hack.min.js'
+		'vendor/seedrandom.min.js'
 	],
 	twine1 : {
 		build : {

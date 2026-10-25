@@ -8,8 +8,10 @@ The template that should be used as the basis of localizations is the `TEMPLATE.
 
 ## Contributors
 
+* `de-DE.js` – Deutsch, by: webfischi.
 * `fr-FR.js` – Français, by: manonamora.
 * `pt-BR.js` – Português (Brazil), by: Janos Biro.
+* `ru-RU.js` – Ру́сский, by: MEAT-KVAS.
 * `tr-TR.js` – Türkçe, by: erencanakyuz.
 * `zh-CN.js` – 简体中文, by: Alt236679.
 

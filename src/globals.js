@@ -51,9 +51,11 @@ let storage = null;
 	Log to the console, and optionally throw, a deprecation warning.
 */
 function warnDeprecated(what, mesg, doThrow) { // eslint-disable-line no-unused-vars
-	console.warn(`[DEPRECATED] ${what} is deprecated${mesg ? `, see ${mesg} instead` : ''}.`);
+	const error = `[DEPRECATED] ${what} is deprecated${mesg ? `, see ${mesg} instead` : ''}`;
+
+	console.warn(`${error}.`);
 
 	if (doThrow) {
-		throw new Error(`[DEPRECATED] ${what} is deprecated${mesg ? `, see ${mesg} instead` : ''}`);
+		throw new Error(error);
 	}
 }

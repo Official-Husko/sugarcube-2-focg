@@ -481,8 +481,8 @@ var Engine = (() => { // eslint-disable-line no-unused-vars, no-var
 		let passageReadyOutput;
 		let passageDoneOutput;
 
-		// Execute the navigation override callback.
-		if (typeof Config.navigation.override === 'function') {
+		// Execute the navigation override callback, if `noHistory` is `false`.
+		if (!noHistory && typeof Config.navigation.override === 'function') {
 			try {
 				const override = Config.navigation.override(passageName);
 
@@ -524,7 +524,7 @@ var Engine = (() => { // eslint-disable-line no-unused-vars, no-var
 		});
 		/* [/DEPRECATED] */
 
-		// Create a new entry in the history.
+		// Create a new entry in the history, if `noHistory` is `false`.
 		if (!noHistory) {
 			State.create(passage.name);
 		}

@@ -8,9 +8,6 @@
 ***********************************************************************************************************************/
 /* global Serial, warnDeprecated */
 
-/*
-	ECMAScript Extensions.
-*/
 (() => {
 	// Cache the native `Math.random`, in case it's replaced later.
 	const nativeMathRandom = Math.random;
@@ -553,25 +550,17 @@
 		configurable : true,
 		writable     : true,
 
-		value(/* needles */) {
+		value(...searchTerms) {
 			if (this == null) { // nullish test
 				throw new TypeError('Array.prototype.includesAll called on null or undefined');
 			}
 
-			if (arguments.length === 1) {
-				if (Array.isArray(arguments[0])) {
-					return Array.prototype.includesAll.apply(this, arguments[0]);
-				}
+			const needles = searchTerms.length === 1 && searchTerms[0] instanceof Array
+				? searchTerms[0]
+				: searchTerms;
 
-				return Array.prototype.includes.apply(this, arguments);
-			}
-
-			for (let i = 0, iend = arguments.length; i < iend; ++i) {
-				if (
-					!Array.prototype.some.call(this, function (val) {
-						return val === this.val || val !== val && this.val !== this.val;
-					}, { val : arguments[i] })
-				) {
+			for (let i = 0; i < needles.length; ++i) {
+				if (!Array.prototype.includes.call(this, needles[i])) {
 					return false;
 				}
 			}
@@ -587,25 +576,17 @@
 		configurable : true,
 		writable     : true,
 
-		value(/* needles */) {
+		value(...searchTerms) {
 			if (this == null) { // nullish test
 				throw new TypeError('Array.prototype.includesAny called on null or undefined');
 			}
 
-			if (arguments.length === 1) {
-				if (Array.isArray(arguments[0])) {
-					return Array.prototype.includesAny.apply(this, arguments[0]);
-				}
+			const needles = searchTerms.length === 1 && searchTerms[0] instanceof Array
+				? searchTerms[0]
+				: searchTerms;
 
-				return Array.prototype.includes.apply(this, arguments);
-			}
-
-			for (let i = 0, iend = arguments.length; i < iend; ++i) {
-				if (
-					Array.prototype.some.call(this, function (val) {
-						return val === this.val || val !== val && this.val !== this.val;
-					}, { val : arguments[i] })
-				) {
+			for (let i = 0; i < needles.length; ++i) {
+				if (Array.prototype.includes.call(this, needles[i])) {
 					return true;
 				}
 			}
@@ -1113,6 +1094,58 @@
 			const { char } = getCodePointStartAndEnd(str, 0);
 
 			return char;
+		}
+	});
+
+	/*
+		Returns whether all of the given substrings were found within the base string.
+	*/
+	Object.defineProperty(String.prototype, 'includesAll', {
+		configurable : true,
+		writable     : true,
+
+		value(...searchTerms) {
+			if (this == null) { // nullish test
+				throw new TypeError('String.prototype.includesAll called on null or undefined');
+			}
+
+			const needles = searchTerms.length === 1 && searchTerms[0] instanceof Array
+				? searchTerms[0]
+				: searchTerms;
+
+			for (let i = 0; i < needles.length; ++i) {
+				if (!String.prototype.includes.call(this, needles[i])) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+	});
+
+	/*
+		Returns whether any of the given substrings were found within the base string.
+	*/
+	Object.defineProperty(String.prototype, 'includesAny', {
+		configurable : true,
+		writable     : true,
+
+		value(...searchTerms) {
+			if (this == null) { // nullish test
+				throw new TypeError('String.prototype.includesAny called on null or undefined');
+			}
+
+			const needles = searchTerms.length === 1 && searchTerms[0] instanceof Array
+				? searchTerms[0]
+				: searchTerms;
+
+			for (let i = 0; i < needles.length; ++i) {
+				if (String.prototype.includes.call(this, needles[i])) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 	});
 

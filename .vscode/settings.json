@@ -1,8 +1,10 @@
 {
-	"editor.insertSpaces": false,
 	"css.validate": false,
-	"twee3LanguageTools.storyformat.current": "sugarcube-2",
+	"editor.guides.bracketPairs": true,
+	"editor.insertSpaces": false,
+	"editor.renderWhitespace": "boundary",
 	"editor.unicodeHighlight.ambiguousCharacters": false,
 	"files.trimTrailingWhitespace": true,
-	"files.trimFinalNewlines": true
+	"files.trimFinalNewlines": true,
+	"twee3LanguageTools.storyformat.current": "sugarcube-2"
 }

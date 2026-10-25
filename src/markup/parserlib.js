@@ -1550,8 +1550,8 @@
 				const svgTag = w.source.slice(w.matchStart, this.lookahead.lastIndex);
 				const $frag  = jQuery(document.createDocumentFragment()).append(svgTag);
 
-				// Postprocess the relevant SVG element nodes.
-				$frag.find('a[data-passage],image[data-passage]').each((_, el) => {
+				// Postprocess SVG element nodes.
+				$frag.each((_, el) => {
 					const tagName = el.tagName.toLowerCase();
 
 					try {
@@ -1566,6 +1566,14 @@
 					}
 
 					if (el.hasAttribute('data-passage')) {
+						if (el.hasAttribute('href')) {
+							return appendError(
+								w.output,
+								`svg|<${tagName}>: elements may not include both "data-passage" and "href" atttributes`,
+								`${w.matchText}\u2026`
+							);
+						}
+
 						this.processDataAttributes(el, tagName);
 					}
 				});
@@ -1583,6 +1591,10 @@
 
 				if (evalShorthand || name.startsWith('sc-eval:')) {
 					const newName = name.slice(evalShorthand ? 1 : 8); // Remove eval directive prefix.
+
+					if (newName.includes(':')) {
+						throw new Error(`evaluation directive is not allowed on attributes with a namespace: "${name}"`);
+					}
 
 					if (newName === 'data-setter') {
 						throw new Error(`evaluation directive is not allowed on the data-setter attribute: "${name}"`);

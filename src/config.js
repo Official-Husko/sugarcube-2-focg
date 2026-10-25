@@ -21,8 +21,9 @@ var Config = (() => { // eslint-disable-line no-unused-vars, no-var
 	let cfgAudioPreloadMetadata   = true;
 
 	// State history settings.
-	let cfgHistoryControls  = true;
-	let cfgHistoryMaxStates = 40;
+	let cfgHistoryControls      = true;
+	let cfgHistoryDisableDeltas = false;
+	let cfgHistoryMaxStates     = 40;
 
 	// Macros settings.
 	let cfgMacrosMaxLoopIterations   = 1000;
@@ -111,6 +112,9 @@ var Config = (() => { // eslint-disable-line no-unused-vars, no-var
 
 				cfgHistoryControls = controls;
 			},
+
+			get disableDeltas() { return cfgHistoryDisableDeltas; },
+			set disableDeltas(value) { cfgHistoryDisableDeltas = Boolean(value); },
 
 			get maxStates() { return cfgHistoryMaxStates; },
 			set maxStates(value) {

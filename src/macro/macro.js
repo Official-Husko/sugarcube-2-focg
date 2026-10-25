@@ -6,7 +6,7 @@
 	Use of this source code is governed by a BSD 2-clause "Simplified" License, which may be found in the LICENSE file.
 
 ***********************************************************************************************************************/
-/* global Patterns, Scripting, macros */
+/* global Patterns, macros */
 
 var Macro = (() => { // eslint-disable-line no-unused-vars, no-var
 	// Macro definitions.
@@ -219,9 +219,7 @@ var Macro = (() => { // eslint-disable-line no-unused-vars, no-var
 	*******************************************************************************/
 
 	return Object.preventExtensions(Object.create(null, {
-		/*
-			Macro Functions.
-		*/
+		// Macro Functions.
 		add     : { value : macrosAdd },
 		delete  : { value : macrosDelete },
 		isEmpty : { value : macrosIsEmpty },
@@ -229,9 +227,7 @@ var Macro = (() => { // eslint-disable-line no-unused-vars, no-var
 		get     : { value : macrosGet },
 		init    : { value : macrosInit },
 
-		/*
-			Tags Functions.
-		*/
+		// Tags Functions.
 		tags : {
 			value : Object.preventExtensions(Object.create(null, {
 				register   : { value : tagsRegister },
@@ -239,11 +235,6 @@ var Macro = (() => { // eslint-disable-line no-unused-vars, no-var
 				has        : { value : tagsHas },
 				get        : { value : tagsGet }
 			}))
-		},
-
-		/*
-			Legacy Aliases.
-		*/
-		evalStatements : { value : (...args) => Scripting.evalJavaScript(...args) } // SEE: `markup/scripting.js`.
+		}
 	}));
 })();
