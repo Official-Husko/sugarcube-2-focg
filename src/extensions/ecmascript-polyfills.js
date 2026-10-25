@@ -13,23 +13,6 @@
 	*******************************************************************************/
 
 	/*
-		[ES2022] Returns whether the given object has an own property by the given name.
-	*/
-	if (!Object.hasOwn) {
-		// Cache the `<Object>.hasOwnProperty()` method.
-		const hasOwnProperty = Object.prototype.hasOwnProperty;
-
-		Object.defineProperty(Object, 'hasOwn', {
-			configurable : true,
-			writable     : true,
-
-			value(O, P) {
-				return hasOwnProperty.call(Object(O), P);
-			}
-		});
-	}
-
-	/*
 		[? ES2025 ?] Returns a copy of the given string with all RegExp metacharacters escaped.
 
 		WARNING: Does not replace lone surrogates with their escape sequences.

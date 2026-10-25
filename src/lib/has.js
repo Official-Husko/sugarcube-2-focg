@@ -6,8 +6,6 @@
 	Use of this source code is governed by a BSD 2-clause "Simplified" License, which may be found in the LICENSE file.
 
 ***********************************************************************************************************************/
-/* global Browser */
-
 var Has = (() => { // eslint-disable-line no-unused-vars, no-var
 	/*
 		NOTE: The aggressive try/catch feature tests are necessitated by
@@ -25,18 +23,10 @@ var Has = (() => { // eslint-disable-line no-unused-vars, no-var
 	})();
 
 	// Is the `File` API available?
-	const hasFile = (() => {
-		try {
-			return 'Blob' in window
-				&& 'File' in window
-				&& 'FileList' in window
-				&& 'FileReader' in window
-				&& (!Browser.isOpera || Browser.operaVersion >= 15);
-		}
-		catch (ex) { /* no-op */ }
-
-		return false;
-	})();
+	const hasFile = typeof window.Blob === 'function'
+		&& typeof window.File === 'function'
+		&& typeof window.FileList === 'function'
+		&& typeof window.FileReader === 'function';
 
 	// Is the `geolocation` API available?
 	const hasGeolocation = (() => {
@@ -51,51 +41,21 @@ var Has = (() => { // eslint-disable-line no-unused-vars, no-var
 	})();
 
 	// Is the `performance` API available?
-	const hasPerformance = (() => {
-		try {
-			return 'performance' in window
-				&& typeof window.performance.now === 'function';
-		}
-		catch (ex) { /* no-op */ }
-
-		return false;
-	})();
+	const hasPerformance = typeof window.performance?.now === 'function';
 
 	// Is the platform a touch device?
 	const hasTouch = (() => {
 		try {
 			return 'ontouchstart' in window
-				|| !!window.DocumentTouch && document instanceof window.DocumentTouch
-				|| !!navigator.maxTouchPoints
-				|| !!navigator.msMaxTouchPoints;
+				|| !!navigator.maxTouchPoints;
 		}
 		catch (ex) { /* no-op */ }
 
 		return false;
 	})();
 
-	// Is the transition end event available and by what name?
-	const hasTransitionEndEvent = (() => {
-		try {
-			const teMap = new Map([
-				['transition',       'transitionend'],
-				['MSTransition',     'msTransitionEnd'],
-				['WebkitTransition', 'webkitTransitionEnd'],
-				['MozTransition',    'transitionend']
-			]);
-			const teKeys = Array.from(teMap.keys());
-			const el     = document.createElement('div');
-
-			for (let i = 0; i < teKeys.length; ++i) {
-				if (el.style[teKeys[i]] !== undefined) {
-					return teMap.get(teKeys[i]);
-				}
-			}
-		}
-		catch (ex) { /* no-op */ }
-
-		return false;
-	})();
+	// Is the transition end event available and by what name?  (Unprefixed everywhere we support.)
+	const hasTransitionEndEvent = 'ontransitionend' in window ? 'transitionend' : false;
 
 
 	/*******************************************************************************
