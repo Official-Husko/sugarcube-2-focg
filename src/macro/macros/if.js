@@ -6,7 +6,7 @@
 	Use of this source code is governed by a BSD 2-clause "Simplified" License, which may be found in the LICENSE file.
 
 ***********************************************************************************************************************/
-/* global Config, Macro, Scripting, Wikifier, getErrorMessage */
+/* global Config, Macro, Scripting, Wikifier */
 
 /*
 	<<if>>, <<elseif>>, & <<else>>
@@ -137,7 +137,7 @@ Macro.add('if', {
 
 		catch (ex) {
 			return this.error(
-				`bad conditional expression in <<${i === 0 ? 'if' : 'elseif'}>> clause${i > 0 ? ' (#' + i + ')' : ''}: ${typeof ex === 'object' ? `${ex.name}: ${ex.message}` : ex}`,
+				`bad conditional expression in <<${i === 0 ? 'if' : 'elseif'}>> clause${i > 0 ? ` (#${i})` : ''}: ${typeof ex === 'object' ? `${ex.name}: ${ex.message}` : ex}`,
 				null,
 				ex.stack
 			); // eslint-disable-line prefer-template

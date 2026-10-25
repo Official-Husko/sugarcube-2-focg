@@ -50,14 +50,7 @@ function appendError(output, message, source, stack) { // eslint-disable-line no
 		})
 		.appendTo($wrapper);
 
-
-		/*
-
-		This is taken from the original SugarCube v2 fork used by darkofoc.
-		This should hopefully do the same thing as the original patch.
-
-		*/
-
+	// Stack traces are scrubbed of file paths before being displayed.
 	if (stack) {
 		const lines = stack.split('\n');
 		for (const ll of lines) {
