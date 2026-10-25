@@ -34,12 +34,113 @@ const passages = {
 		{{widget "w1"}}W:{{print _args[0]}}{{/widget}}{{w1 "a"}};
 		{{set $map to new Map([[1, 'one']])}}{{set $set to new Set([7])}}{{set $date to new Date(86400000)}}
 		{{set $obj to JSON.parse('{"a":[1,2,{"b":3}]}')}}
+		{{hello}}
 		{{timed 50ms}}TIMED-OK{{/timed}}
 		{{link "L1" "Next"}}{{set $linked to true}}{{/link}}
 		{{button "Btn"}}{{set $btn to 1}}{{/button}}`,
 	Next : `At next; {{set $n to 1}}$x`,
 	Err  : `{{run (void 0).boom()}}`
 };
+
+// Identifiers that story JavaScript can reach by name, because SugarCube evaluates it with a direct `eval()` inside
+// the engine's closure.  Minification must not rename any of them.
+const scopeNames = [
+	'Alert',
+	'Browser',
+	'Config',
+	'DebugBar',
+	'DebugView',
+	'Dialog',
+	'Diff',
+	'Engine',
+	'Fullscreen',
+	'Has',
+	'L10n',
+	'Lexer',
+	'LoadScreen',
+	'Macro',
+	'MacroContext',
+	'NodeTyper',
+	'Outlines',
+	'Passage',
+	'Patterns',
+	'Save',
+	'Scripting',
+	'Serial',
+	'Setting',
+	'SimpleAudio',
+	'SimpleStore',
+	'State',
+	'Story',
+	'StyleWrapper',
+	'TempState',
+	'Template',
+	'UI',
+	'UIBar',
+	'Util',
+	'Visibility',
+	'Wikifier',
+	'WikifierUtil',
+	'apiSafetyLock',
+	'appendError',
+	'charAndPosAt',
+	'clone',
+	'convertBreaks',
+	'createFilename',
+	'createSlug',
+	'cssPropToDOMProp',
+	'cssTimeToMS',
+	'decodeEntities',
+	'encodeEntities',
+	'encodeMarkup',
+	'enquote',
+	'enumFrom',
+	'errorPrologRE',
+	'exceptionFrom',
+	'getActiveElement',
+	'getErrorMessage',
+	'getToStringTag',
+	'getTypeOf',
+	'hasBlockContext',
+	'hasMediaQuery',
+	'isExternalLink',
+	'jQuery',
+	'l10nStrings',
+	'macros',
+	'msToCSSTime',
+	'now',
+	'onUserActivation',
+	'parseURL',
+	'postdisplay',
+	'postrender',
+	'predisplay',
+	'prehistory',
+	'prerender',
+	'sameValueZero',
+	'scrubEventKey',
+	'session',
+	'setDisplayTitle',
+	'setPageElement',
+	'settings',
+	'setup',
+	'storage',
+	'stringFrom',
+	'throwError',
+	'triggerEvent',
+	'version',
+	'warnDeprecated'
+];
+
+// Story JavaScript: probe the scope and use the author-facing APIs the way real stories do.
+const storyScript = `
+	window.__probe = {};
+	${scopeNames.map(name => `window.__probe['${name}'] = typeof ${name};`).join('\n\t')}
+	setup.fromScript = 41;
+	Config.passages.nobr = false;
+	Setting.addToggle('smokeToggle', { label : 'Smoke', default : true });
+	Macro.add('hello', { handler() { this.output.append(document.createTextNode('HELLO-' + setup.fromScript)); } });
+	l10nStrings.errorTitle = 'Smoke error';
+`;
 
 function escapeHtml(str) {
 	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -50,7 +151,7 @@ function buildStoryHtml(source) {
 		'<tw-storydata name="Smoke" startnode="1" creator="smoke" creator-version="1" ',
 		'ifid="D674C58C-DEFA-4F70-B7A2-27742230C0FC" zoom="1" format="SugarCube" format-version="2.38.0" options="" hidden>',
 		'<style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css"></style>',
-		'<script role="script" id="twine-user-script" type="text/twine-javascript"></script>',
+		`<script role="script" id="twine-user-script" type="text/twine-javascript">${storyScript}</script>`,
 		Object.entries(passages).map(([name, text], i) => {
 			const body = escapeHtml(text.replace(/\{\{/g, '<<').replace(/\}\}/g, '>>'));
 			return `<tw-passagedata pid="${i + 1}" name="${name}" tags="" position="0,0" size="100,100">${body}</tw-passagedata>`;
@@ -94,6 +195,13 @@ function check(label, ok, extra) {
 		check('<<for>>',                text.includes('[0][1][2]'));
 		check('<<switch>>',             text.includes('SW-OK'));
 		check('<<widget>>',             text.includes('W:a'));
+
+		check('story JS: custom macro via Macro.add + setup', text.includes('HELLO-41'), text);
+		const probe   = await page.evaluate(() => window.__probe);
+		const missing = scopeNames.filter(name => probe[name] === undefined || probe[name] === 'undefined');
+		check(`story JS: all ${scopeNames.length} engine identifiers visible by name`, missing.length === 0, missing);
+		check('story JS: Setting.addToggle registered',
+								await page.evaluate(() => SugarCube.Setting.has('smokeToggle') && SugarCube.settings.smokeToggle === true));
 
 		await page.waitForFunction(() => document.querySelector('#passages .passage').textContent.includes('TIMED-OK'), null, { timeout : 5000 })
 			.then(() => check('<<timed>>', true), () => check('<<timed>>', false));
