@@ -166,6 +166,8 @@ const _opts = require('commander')
 	.option('-d, --debug', 'Keep debugging code; gated by BUILD_DEBUG symbol.')
 	.option('-u, --unminified', 'Suppress minification stages.')
 	.option('-n, --notranspile', 'Suppress JavaScript transpilation stages.')
+	.option('-i, --subset-icons', 'Embed only the sc-icons glyphs the UI uses (plus any from --keep-icons).')
+	.option('-k, --keep-icons <codepoints>', 'Extra sc-icons codepoints to keep when subsetting; comma-separated hex, e.g. f001,f0e7.')
 	.helpOption('-h, --help', 'Print this help, then exit.')
 	.parse()
 	.opts();
@@ -226,6 +228,11 @@ if (_opts.build) {
 		};
 	})();
 
+	// Optionally subset the embedded icon font.
+	if (_opts.subsetIcons) {
+		await subsetIconFont(CONFIG);
+	}
+
 	// Build for Twine 1.x.
 	if (_buildForTwine1 && CONFIG.twine1) {
 		console.log('\nBuilding Twine 1.x version:');
@@ -284,12 +291,71 @@ if (_opts.build) {
 	writeFileContents('.build', String(version.build));
 })()
 	.then(() => console.log('\nBuilds complete!  (check the "build" directory)'))
-	.catch(reason => console.log('\nERROR:', reason));
+	.catch(reason => {
+		console.error('\nERROR:', reason);
+		process.exitCode = 1;
+	});
 
 
 /*******************************************************************************
 	Utility Functions
 *******************************************************************************/
+// Base64 of the subset icon font, when `--subset-icons` is in effect.
+let _iconFontSubset = null;
+
+async function subsetIconFont(config) {
+	log('subsetting the icon font...');
+
+	const subsetFont = require('subset-font');
+	const cssFile    = config.css.files.find(file => /font-icons\.css$/.test(file));
+	const cssSource  = readFileContents(cssFile);
+	const fontMatch  = cssSource.match(/url\(['"]?data:[^;]+;base64,([A-Za-z0-9+/=]+)/);
+
+	if (!fontMatch) {
+		die(`unable to locate the embedded font in "${cssFile}"`);
+	}
+
+	// Collect the private-use codepoints that the UI's own CSS and JavaScript reference, in any of the forms:
+	// CSS escapes (`\f00d`), HTML entities (`&#xf00d;`), JS escapes (`\uf00d`), or the literal character.
+	const codepoints = new Set();
+	const sources    = [
+		...config.css.files.filter(file => file !== cssFile).map(file => readFileContents(file)),
+		...walkPaths(config.js.files).map(file => readFileContents(file))
+	];
+	const escapeRE = /(?:\\u?|&#x)([ef][0-9a-f]{3})\b/gi;
+
+	for (const source of sources) {
+		for (const [, hex] of source.matchAll(escapeRE)) {
+			codepoints.add(parseInt(hex, 16));
+		}
+
+		for (const ch of source) {
+			const cp = ch.codePointAt(0);
+
+			if (cp >= 0xE000 && cp <= 0xF8FF) {
+				codepoints.add(cp);
+			}
+		}
+	}
+
+	// Add the user-requested codepoints.
+	if (_opts.keepIcons) {
+		for (const hex of _opts.keepIcons.split(',').map(str => str.trim()).filter(Boolean)) {
+			if (!/^[0-9a-f]{3,6}$/i.test(hex)) {
+				die(`invalid --keep-icons codepoint: "${hex}"`);
+			}
+
+			codepoints.add(parseInt(hex, 16));
+		}
+	}
+
+	const original = Buffer.from(fontMatch[1], 'base64');
+	const subset   = await subsetFont(original, String.fromCodePoint(...codepoints), { targetFormat : 'woff2' });
+
+	_iconFontSubset = subset.toString('base64');
+	log(`kept ${codepoints.size} candidate codepoints: ${Math.round(original.length / 1024)} KiB -> ${Math.round(subset.length / 1024)} KiB`, '    ');
+}
+
 function assembleLibraries(filenames) {
 	log('assembling libraries...');
 
@@ -358,6 +424,11 @@ function compileStyles(config) {
 
 	return concatFiles(config.files, (contents, filename) => {
 		let css = contents;
+
+		// Swap in the subset icon font, if one was generated.
+		if (_iconFontSubset && /font-icons\.css$/.test(filename)) {
+			css = css.replace(/(url\(['"]?data:[^;]+;base64,)[A-Za-z0-9+/=]+/, (_, head) => `${head}${_iconFontSubset}`);
+		}
 
 		// Do not run the postcss plugins on files that match the exclusion regexp.
 		if (!excludeRE.test(filename)) {
