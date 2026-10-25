@@ -135,6 +135,7 @@ const scopeNames = [
 const storyScript = `
 	window.__probe = {};
 	${scopeNames.map(name => `window.__probe['${name}'] = typeof ${name};`).join('\n\t')}
+	window.__Serial = Serial;
 	setup.fromScript = 41;
 	Config.passages.nobr = false;
 	Setting.addToggle('smokeToggle', { label : 'Smoke', default : true });
@@ -219,6 +220,23 @@ function check(label, ok, extra) {
 			lzstring    : typeof LZString
 		}));
 		check('compat globals present', Object.values(compat).every(v => v === 'function' || v === 'object'), compat);
+
+		// A failed serialization must not leave `toJSON` patched onto the built-in prototypes.
+		const serial = await page.evaluate(() => {
+			const circular = {};
+			circular.self  = circular;
+			const nativeDateToJSON = Date.prototype.toJSON;
+			let threw = false;
+			try { window.__Serial.stringify(circular); }
+			catch (ex) { threw = true; }
+			return {
+				threw,
+				mapClean : !Object.hasOwn(Map.prototype, 'toJSON'),
+				setClean : !Object.hasOwn(Set.prototype, 'toJSON'),
+				dateOk   : Date.prototype.toJSON === nativeDateToJSON
+			};
+		});
+		check('Serial.stringify restores prototypes after a throw', serial.threw && serial.mapClean && serial.setClean && serial.dateOk, serial);
 
 		// Behaviour of the compat shims (throttle/debounce, imagesLoaded, saveAs).
 		const shims = await page.evaluate(async () => {

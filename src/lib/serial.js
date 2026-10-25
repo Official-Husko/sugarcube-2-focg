@@ -131,45 +131,50 @@ var Serial = (() => { // eslint-disable-line no-unused-vars, no-var
 			});
 		});
 
-		const notation = JSON.stringify(value, (key, val) => {
-			let value = val;
+		let notation;
 
-			// Call the custom replacer, if specified.
-			if (typeof replacer === 'function') {
-				try {
-					value = replacer(key, value);
+		try {
+			notation = JSON.stringify(value, (key, val) => {
+				let value = val;
+
+				// Call the custom replacer, if specified.
+				if (typeof replacer === 'function') {
+					try {
+						value = replacer(key, value);
+					}
+					catch (ex) { /* no-op; though, perhaps we should handle this somehow */ }
 				}
-				catch (ex) { /* no-op; though, perhaps we should handle this somehow */ }
-			}
 
-			// Handle supported primitive values unsupported by JSON.
-			switch (value) {
-				case undefined:
-					value = ['(revive:)', ['undefined']];
-					break;
+				// Handle supported primitive values unsupported by JSON.
+				switch (value) {
+					case undefined:
+						value = ['(revive:)', ['undefined']];
+						break;
 
-				case Infinity:
-					value = ['(revive:)', ['Infinity']];
-					break;
-			}
+					case Infinity:
+						value = ['(revive:)', ['Infinity']];
+						break;
+				}
 
-			return value;
-		}, space);
-
-		// Restore supported types to their original state.
-		supportedTypes.forEach(({ id, reference }) => {
-			if (origMethodCache.has(id)) {
-				Object.defineProperty(reference, 'toJSON', {
-					configurable : true,
-					writable     : true,
-					value        : origMethodCache.get(id)
-				});
-				origMethodCache.delete(id);
-			}
-			else {
-				delete reference.toJSON; // eslint-disable-line no-param-reassign
-			}
-		});
+				return value;
+			}, space);
+		}
+		finally {
+			// Restore supported types to their original state, even if serialization threw.
+			supportedTypes.forEach(({ id, reference }) => {
+				if (origMethodCache.has(id)) {
+					Object.defineProperty(reference, 'toJSON', {
+						configurable : true,
+						writable     : true,
+						value        : origMethodCache.get(id)
+					});
+					origMethodCache.delete(id);
+				}
+				else {
+					delete reference.toJSON; // eslint-disable-line no-param-reassign
+				}
+			});
+		}
 
 		return notation;
 	}

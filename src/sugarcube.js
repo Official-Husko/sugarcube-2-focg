@@ -114,7 +114,7 @@ jQuery(() => {
 		.catch(ex => {
 			console.error(ex);
 			LoadScreen.clear();
-			return Alert.fatal(null, ex.message, ex);
+			return Alert.fatal(null, ex);
 		});
 });
 
