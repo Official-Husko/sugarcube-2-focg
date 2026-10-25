@@ -15,7 +15,7 @@
 			* https://www.client9.com/css-color-emoji-stack/
 			* https://nolanlawson.com/2022/04/08/the-struggle-of-using-native-emoji-on-the-web/
 	*/
-	font-family: "color-emoji";
+	font-family: color-emoji;
 	src:
 		/* Firefox (via Twitter) */
 		local("Twemoji Mozilla"),
