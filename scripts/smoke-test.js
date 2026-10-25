@@ -39,6 +39,7 @@ const passages = {
 		{{link "L1" "Next"}}{{set $linked to true}}{{/link}}
 		{{button "Btn"}}{{set $btn to 1}}{{/button}}`,
 	Next : `At next; {{set $n to 1}}$x`,
+	Cap  : `{{capture "notAVariable"}}CAP-OK{{/capture}}`,
 	Err  : `{{run (void 0).boom()}}`
 };
 
@@ -136,6 +137,7 @@ const storyScript = `
 	window.__probe = {};
 	${scopeNames.map(name => `window.__probe['${name}'] = typeof ${name};`).join('\n\t')}
 	window.__Serial = Serial;
+	window.__isExternalLink = isExternalLink;
 	setup.fromScript = 41;
 	Config.passages.nobr = false;
 	Setting.addToggle('smokeToggle', { label : 'Smoke', default : true });
@@ -220,6 +222,20 @@ function check(label, ok, extra) {
 			lzstring    : typeof LZString
 		}));
 		check('compat globals present', Object.values(compat).every(v => v === 'function' || v === 'object'), compat);
+
+		// `isExternalLink` must be stateless (its RegExp was once global, so results alternated).
+		const ext = await page.evaluate(() => [1, 2, 3, 4].map(() => window.__isExternalLink('mailto:a@example.com')));
+		check('isExternalLink is stable across calls', ext.every(Boolean), ext);
+
+		// `<<capture>>` with no variable in its argument must not throw from its cleanup.
+		await page.evaluate(() => SugarCube.Engine.play('Cap', true));
+		await page.waitForFunction(() => document.querySelector('#passages .passage').textContent.includes('CAP-OK')
+			|| document.querySelector('#passages .error-view'));
+		check('<<capture>> without a variable renders', await page.evaluate(() =>
+			document.querySelector('#passages .passage').textContent.includes('CAP-OK')
+			&& !document.querySelector('#passages .error-view')));
+		await page.evaluate(() => SugarCube.Engine.play('Start', true));
+		await page.waitForSelector('#passages .passage a.link-internal');
 
 		// A failed serialization must not leave `toJSON` patched onto the built-in prototypes.
 		const serial = await page.evaluate(() => {

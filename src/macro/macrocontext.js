@@ -94,7 +94,7 @@ class MacroContext { // eslint-disable-line no-unused-vars
 	}
 
 	get shadows() {
-		return Array.from(this.#shadows);
+		return this.#shadows ? Array.from(this.#shadows) : [];
 	}
 
 	get shadowView() {
