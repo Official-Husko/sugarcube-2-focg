@@ -28,6 +28,7 @@ const CONFIG = {
 			'src/extensions/ecmascript-polyfills.js',
 			'src/extensions/ecmascript-extensions.js',
 			'src/extensions/jquery/',
+			'src/lib/save-as.js',
 			'src/lib/browser.js',
 			'src/lib/has.js',
 			'src/lib/outlines.js',
@@ -98,10 +99,7 @@ const CONFIG = {
 	libs : [
 		// The ordering herein is significant.
 		'vendor/jquery.min.js',
-		'vendor/jquery.ba-throttle-debounce.min.js',
-		'vendor/imagesloaded.pkgd.min.js',
 		'vendor/lz-string.min.js',
-		'vendor/FileSaver.min.js',
 		'vendor/seedrandom.min.js'
 	],
 	twine1 : {

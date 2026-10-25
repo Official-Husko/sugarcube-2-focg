@@ -13,7 +13,9 @@
 
 ***********************************************************************************************************************/
 /* eslint-env node, es2021 */
-/* eslint-disable strict */
+/* global SugarCube, jQuery, saveAs */
+/* eslint-disable strict, id-length, key-spacing, new-cap, no-new-func, prefer-template, quotes */
+/* eslint-disable newline-per-chained-call, no-extra-parens, no-unused-vars */
 'use strict';
 
 const fs   = require('fs');
@@ -109,6 +111,46 @@ function check(label, ok, extra) {
 			lzstring    : typeof LZString
 		}));
 		check('compat globals present', Object.values(compat).every(v => v === 'function' || v === 'object'), compat);
+
+		// Behaviour of the compat shims (throttle/debounce, imagesLoaded, saveAs).
+		const shims = await page.evaluate(async () => {
+			const sleep = ms => new Promise(res => setTimeout(res, ms));
+			const out   = {};
+
+			let thr = 0;
+			const throttled = jQuery.throttle(50, () => ++thr);
+			throttled(); throttled(); throttled();
+			await sleep(120);
+			out.throttle = thr; // leading + one trailing call
+
+			let deb = 0;
+			const debounced = jQuery.debounce(50, () => ++deb);
+			debounced(); debounced(); debounced();
+			await sleep(20);
+			out.debounceEarly = deb;
+			await sleep(120);
+			out.debounce = deb;
+
+			const px = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+			const good = jQuery('<div><img src="' + px + '"><img src="' + px + '"></div>');
+			const bad  = jQuery('<div><img src="' + px + '"><img src="data:image/png;base64,AAAA"></div>');
+			let progress = 0;
+			out.imagesGood  = await good.imagesLoaded().progress(() => ++progress).then(() => 'resolved', () => 'rejected');
+			out.progress    = progress;
+			out.imagesBad   = await bad.imagesLoaded().then(() => 'resolved', () => 'rejected');
+			out.imagesNone  = await jQuery('<div></div>').imagesLoaded().then(() => 'resolved', () => 'rejected');
+			return out;
+		});
+		check('jQuery.throttle: leading + trailing', shims.throttle === 2, shims.throttle);
+		check('jQuery.debounce: single trailing call', shims.debounceEarly === 0 && shims.debounce === 1, shims);
+		check('imagesLoaded: resolves / rejects / empty', shims.imagesGood === 'resolved' && shims.progress === 2
+			&& shims.imagesBad === 'rejected' && shims.imagesNone === 'resolved', shims);
+
+		const [download] = await Promise.all([
+			page.waitForEvent('download', { timeout : 5000 }),
+			page.evaluate(() => saveAs(new Blob(['hello'], { type : 'text/plain' }), 'smoke.txt'))
+		]);
+		check('saveAs() triggers a named download', download.suggestedFilename() === 'smoke.txt', download.suggestedFilename());
 
 		// Navigation, history, undo.
 		await page.click('#passages .passage a.link-internal >> text=L1');
