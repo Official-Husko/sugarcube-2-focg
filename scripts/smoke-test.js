@@ -137,6 +137,7 @@ const storyScript = `
 	window.__probe = {};
 	${scopeNames.map(name => `window.__probe['${name}'] = typeof ${name};`).join('\n\t')}
 	window.__Serial = Serial;
+	window.__SimpleAudio = SimpleAudio;
 	window.__isExternalLink = isExternalLink;
 	setup.fromScript = 41;
 	Config.passages.nobr = false;
@@ -236,6 +237,13 @@ function check(label, ok, extra) {
 			&& !document.querySelector('#passages .error-view')));
 		await page.evaluate(() => SugarCube.Engine.play('Start', true));
 		await page.waitForSelector('#passages .passage a.link-internal');
+
+		// Invalid playlist IDs must produce the intended message, not a TypeError from a missing method.
+		const listErr = await page.evaluate(() => {
+			try { window.__SimpleAudio.lists.add('bad id', 'someTrack'); return 'no error'; }
+			catch (ex) { return `${ex.name}: ${ex.message}`; }
+		});
+		check('SimpleAudio.lists.add rejects a bad ID clearly', /^Error: .*invalid list ID "bad id"/.test(listErr), listErr);
 
 		// A failed serialization must not leave `toJSON` patched onto the built-in prototypes.
 		const serial = await page.evaluate(() => {

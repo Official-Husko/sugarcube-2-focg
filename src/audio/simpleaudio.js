@@ -1635,7 +1635,7 @@ var SimpleAudio = (() => { // eslint-disable-line no-unused-vars, no-var
 		const what = `list ID "${id}"`;
 
 		if (_badIdRe.test(id)) {
-			return this.error(`invalid ${what}: list IDs must not contain colons or whitespace`);
+			throw new Error(`invalid ${what}: list IDs must not contain colons or whitespace`);
 		}
 
 		const descriptors = arguments[1] instanceof Array
